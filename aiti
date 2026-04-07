@@ -1,0 +1,24 @@
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/vendor/autoload.php';
+
+$app = require __DIR__ . '/bootstrap/app.php';
+
+$console = new System\Cli\Console($app);
+$console->register(new System\Cli\Commands\ListCommand($console));
+$console->register(new System\Cli\Commands\ServeCommand());
+$console->register(new System\Cli\Commands\RouteListCommand());
+$console->register(new System\Cli\Commands\RouteCacheCommand());
+$console->register(new System\Cli\Commands\KeyGenerateCommand());
+$console->register(new System\Cli\Commands\MigrateCommand());
+$console->register(new System\Cli\Commands\PresetBootstrapCommand());
+$console->register(new System\Cli\Commands\ConfigClearCommand());
+$console->register(new System\Cli\Commands\RouteClearCommand());
+$console->register(new System\Cli\Commands\ViewClearCommand());
+$console->register(new System\Cli\Commands\OptimizeCommand());
+$console->register(new System\Cli\Commands\UpgradeCheckCommand());
+$console->register(new System\Cli\Commands\UpgradeApplyCommand());
+
+exit($console->run($_SERVER['argv'] ?? []));

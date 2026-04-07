@@ -1,0 +1,226 @@
+/* public/assets/css/app.css */
+
+:root {
+  --aiti-bg: #f4f8ff;
+  --aiti-text: #0f172a;
+  --aiti-muted: rgba(15, 23, 42, 0.72);
+  --aiti-card: rgba(255, 255, 255, 0.74);
+  --bg-grs: rgba(0, 0, 0, 0.08);
+  --aiti-mark-bg: rgba(255, 255, 255, 0.25);
+  --aiti-mark-border: rgba(255, 255, 255, 0.25);
+  --aiti-input-border: rgba(148, 163, 184, 0.4);
+  --aiti-input-shadow: rgba(2, 6, 23, 0.14);
+  --aiti-input-focus-border: rgba(14, 116, 144, 0.45);
+  --aiti-input-focus-shadow: rgba(2, 6, 23, 0.2);
+  --aiti-btn-shadow: rgba(0, 0, 0, 0.18);
+  --brand-logo-fill: rgba(255, 255, 255, 0.25);
+  --brand-logo-stroke: rgba(255, 255, 255, 0.55);
+  --theme-toggle-border: rgba(148, 163, 184, 0.35);
+  --theme-toggle-hover-bg: rgba(148, 163, 184, 0.18);
+  --aiti-radius: 999px;
+}
+
+[data-theme="dark"] {
+  --aiti-bg: #0b1120;
+  --aiti-text: #e2e8f0;
+  --aiti-muted: rgba(226, 232, 240, 0.72);
+  --aiti-card: rgba(15, 23, 42, 0.68);
+  --bg-grs: rgba(255, 255, 255, 0.08);
+  --aiti-mark-bg: rgba(148, 163, 184, 0.18);
+  --aiti-mark-border: rgba(148, 163, 184, 0.26);
+  --aiti-input-border: rgba(148, 163, 184, 0.32);
+  --aiti-input-shadow: rgba(2, 6, 23, 0.34);
+  --aiti-input-focus-border: rgba(56, 189, 248, 0.52);
+  --aiti-input-focus-shadow: rgba(2, 6, 23, 0.45);
+  --aiti-btn-shadow: rgba(2, 6, 23, 0.38);
+  --brand-logo-fill: rgba(148, 163, 184, 0.2);
+  --brand-logo-stroke: rgba(148, 163, 184, 0.44);
+  --theme-toggle-border: rgba(148, 163, 184, 0.38);
+  --theme-toggle-hover-bg: rgba(148, 163, 184, 0.26);
+}
+
+/* Full hero page */
+.aiti-hero-page {
+  margin: 0;
+  width: 100%;
+  min-height: 100vh;
+  color: var(--aiti-text);
+}
+
+/* Background grid */
+html, body {
+  height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--aiti-bg);
+  background-image: none;
+  color: var(--aiti-text);
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--aiti-bg);
+  background-image:
+    linear-gradient(var(--bg-grs) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grs) 1px, transparent 1px);
+  background-size: 64px 64px;
+  background-position: center;
+  background-repeat: repeat;
+}
+
+.aiti-hero {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Icon mark */
+.aiti-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--aiti-mark-bg);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--aiti-mark-border);
+}
+
+.aiti-mark i {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--aiti-text);
+}
+
+/* Title */
+.fw-black {
+  font-weight: 900;
+}
+
+.aiti-title {
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+
+/* Subtitle */
+.aiti-subtitle {
+  max-width: 520px;
+  font-size: 1rem;
+  color: var(--aiti-muted);
+}
+
+/* Section label */
+.aiti-section-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--aiti-text);
+}
+
+/* Form container */
+.aiti-form {
+  max-width: 620px;
+  width: 100%;
+}
+
+/* Pill input & button */
+.aiti-input {
+  border-radius: var(--aiti-radius);
+  border: 1px solid var(--aiti-input-border);
+  background: var(--aiti-card);
+  color: var(--aiti-text);
+  box-shadow: 0 10px 30px var(--aiti-input-shadow);
+  padding-left: 22px;
+}
+
+.aiti-input:focus {
+  border-color: var(--aiti-input-focus-border);
+  box-shadow: 0 10px 30px var(--aiti-input-focus-shadow);
+}
+
+.aiti-btn {
+  border-radius: var(--aiti-radius);
+  padding-inline: 34px;
+  box-shadow: 0 12px 30px var(--aiti-btn-shadow);
+  border: 0;
+}
+
+/* Small hint */
+.aiti-hint {
+  font-size: 0.9rem;
+  color: var(--aiti-muted);
+}
+
+/* Brand mark SVG */
+.brand-logo-bg {
+  fill: var(--brand-logo-fill);
+  stroke: var(--brand-logo-stroke);
+  stroke-width: 3;
+}
+
+.brand-logo-text {
+  fill: var(--aiti-text);
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 1050;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--theme-toggle-border);
+  border-radius: 999px;
+  background: var(--aiti-card);
+  color: var(--aiti-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+}
+
+.theme-toggle:hover {
+  background: var(--theme-toggle-hover-bg);
+}
+
+.theme-toggle .bi-sun-fill {
+  display: none;
+}
+
+[data-theme="dark"] .theme-toggle .bi-sun-fill {
+  display: inline-block;
+}
+
+[data-theme="dark"] .theme-toggle .bi-moon-stars-fill {
+  display: none;
+}
+
+/* Responsive tweaks */
+@media (max-width: 575.98px) {
+  .aiti-hero {
+    padding-top: 2.8rem;
+    padding-bottom: 1.6rem;
+  }
+
+  .aiti-title {
+    font-size: clamp(2.8rem, 12vw, 4rem);
+  }
+
+  .aiti-subtitle {
+    font-size: 0.98rem;
+  }
+
+  .aiti-input,
+  .aiti-btn {
+    min-height: 54px;
+  }
+}

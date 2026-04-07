@@ -1,0 +1,23 @@
+{
+    "name": "afandisini/aiticore-flex",
+    "description": "AitiCore Flex - CI simplicity, Laravel security",
+    "type": "project",
+    "require": {
+        "php": "^8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "System\\": "system/",
+            "App\\": "app/"
+        },
+        "files": [
+            "system/Support/helpers.php"
+        ]
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}

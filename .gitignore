@@ -1,0 +1,22 @@
+# Folder & file yang di-skip
+.vscode/
+.phpunit.cache/
+.well-known/
+design_template/*
+database/*
+
+# File tertentu
+AGENT.md
+ATURAN.md
+LintasPOS.md
+TASK-TRANSAKSI-LAPORAN.md
+
+# Optional (kalau mau skip juga)
+.env
+/vendor/
+/node_modules/
+/storage/*
+!/storage/.gitignore
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+*.log

@@ -1,0 +1,11 @@
+{
+    "name": "aiticore-flex-assets",
+    "private": true,
+    "version": "0.1.0",
+    "description": "Local vendor assets for AitiCore Flex preset",
+    "license": "MIT",
+    "dependencies": {
+        "bootstrap": "^5.3.0",
+        "bootstrap-icons": "^1.11.0"
+    }
+}

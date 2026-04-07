@@ -1,0 +1,125 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Controllers\AuthController;
+use App\Controllers\DashboardController;
+use App\Controllers\FileManagerController;
+use App\Controllers\HomeController;
+use App\Controllers\MediaController;
+use App\Controllers\MenuGeneratorController;
+use App\Controllers\KeuanganController;
+use App\Controllers\LaporanController;
+use App\Controllers\TokoController;
+use App\Controllers\TransaksiController;
+use App\Controllers\UsersController;
+use App\Middleware\Authenticate;
+use App\Middleware\RedirectIfAuthenticated;
+
+$router->get('/', [AuthController::class, 'root']);
+
+$router->get('/login', [AuthController::class, 'showLogin'])->withMiddleware(RedirectIfAuthenticated::class);
+$router->post('/login', [AuthController::class, 'login'])->withMiddleware(RedirectIfAuthenticated::class);
+
+$router->get('/dashboard', [DashboardController::class, 'index'])->withMiddleware(Authenticate::class);
+$router->get('/media', [MediaController::class, 'show'])->withMiddleware(Authenticate::class);
+$router->get('/filemanager', [FileManagerController::class, 'index'])->withMiddleware(Authenticate::class);
+$router->post('/filemanager/upload', [FileManagerController::class, 'upload'])->withMiddleware(Authenticate::class);
+$router->post('/filemanager/{id}/delete', [FileManagerController::class, 'destroy'])->withMiddleware(Authenticate::class);
+$router->post('/filemanager/delete-bulk', [FileManagerController::class, 'destroyBulk'])->withMiddleware(Authenticate::class);
+$router->post('/filemanager/module', [FileManagerController::class, 'createModule'])->withMiddleware(Authenticate::class);
+$router->post('/filemanager/module/delete', [FileManagerController::class, 'deleteModule'])->withMiddleware(Authenticate::class);
+$router->get('/transaksi', [TransaksiController::class, 'index'])->withMiddleware(Authenticate::class);
+$router->get('/transaksi/penjualan', [TransaksiController::class, 'penjualan'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/penjualan/cart/add', [TransaksiController::class, 'addCartItem'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/penjualan/cart/update', [TransaksiController::class, 'updateCartItem'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/penjualan/cart/remove', [TransaksiController::class, 'removeCartItem'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/penjualan/cart/clear', [TransaksiController::class, 'clearCart'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/penjualan/hold', [TransaksiController::class, 'holdCart'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/penjualan/hold/resume', [TransaksiController::class, 'resumeHold'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/penjualan/hold/delete', [TransaksiController::class, 'deleteHold'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/penjualan/pelanggan/quick', [TransaksiController::class, 'quickPelanggan'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/penjualan/checkout', [TransaksiController::class, 'checkout'])->withMiddleware(Authenticate::class);
+$router->get('/transaksi/pembelian', [TransaksiController::class, 'pembelian'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/pembelian/cart/add', [TransaksiController::class, 'addPurchaseCartItem'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/pembelian/cart/update', [TransaksiController::class, 'updatePurchaseCartItem'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/pembelian/cart/remove', [TransaksiController::class, 'removePurchaseCartItem'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/pembelian/cart/clear', [TransaksiController::class, 'clearPurchaseCart'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/pembelian/supplier/quick', [TransaksiController::class, 'quickSupplier'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/pembelian/modal/quick', [TransaksiController::class, 'quickModalPembelian'])->withMiddleware(Authenticate::class);
+$router->get('/transaksi/pembelian/po/datatable', [TransaksiController::class, 'purchasePoDatatable'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/pembelian/po/update', [TransaksiController::class, 'updatePurchasePo'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/pembelian/po/delete', [TransaksiController::class, 'deletePurchasePo'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/pembelian/checkout', [TransaksiController::class, 'checkoutPembelian'])->withMiddleware(Authenticate::class);
+$router->get('/keuangan/input', [KeuanganController::class, 'input'])->withMiddleware(Authenticate::class);
+$router->post('/keuangan/input', [KeuanganController::class, 'input'])->withMiddleware(Authenticate::class);
+$router->get('/keuangan/input/datatable', [KeuanganController::class, 'datatable'])->withMiddleware(Authenticate::class);
+$router->get('/laporan', [LaporanController::class, 'index'])->withMiddleware(Authenticate::class);
+$router->get('/laporan/datatable', [LaporanController::class, 'datatable'])->withMiddleware(Authenticate::class);
+$router->get('/laporan/datatable/rugi-laba', [LaporanController::class, 'datatableRugiLaba'])->withMiddleware(Authenticate::class);
+$router->get('/laporan/datatable/keuangan', [LaporanController::class, 'datatableKeuangan'])->withMiddleware(Authenticate::class);
+$router->get('/laporan/export', [LaporanController::class, 'exportPdf'])->withMiddleware(Authenticate::class);
+$router->get('/profile', [UsersController::class, 'profile'])->withMiddleware(Authenticate::class);
+$router->post('/profile', [UsersController::class, 'updateProfile'])->withMiddleware(Authenticate::class);
+$router->get('/users', [UsersController::class, 'index'])->withMiddleware(Authenticate::class);
+$router->get('/users/datatable', [UsersController::class, 'datatable'])->withMiddleware(Authenticate::class);
+$router->post('/users', [UsersController::class, 'store'])->withMiddleware(Authenticate::class);
+$router->post('/users/{id}/update', [UsersController::class, 'update'])->withMiddleware(Authenticate::class);
+$router->post('/users/{id}/delete', [UsersController::class, 'destroy'])->withMiddleware(Authenticate::class);
+$router->get('/toko', [TokoController::class, 'index'])->withMiddleware(Authenticate::class);
+$router->post('/toko', [TokoController::class, 'update'])->withMiddleware(Authenticate::class);
+$router->get('/menu-generator', [MenuGeneratorController::class, 'index'])->withMiddleware(Authenticate::class);
+$router->get('/menu-generator/datatable', [MenuGeneratorController::class, 'datatable'])->withMiddleware(Authenticate::class);
+$router->get('/menu-generator/create', [MenuGeneratorController::class, 'create'])->withMiddleware(Authenticate::class);
+$router->post('/menu-generator/scan-table', [MenuGeneratorController::class, 'scanTable'])->withMiddleware(Authenticate::class);
+$router->post('/menu-generator/store', [MenuGeneratorController::class, 'store'])->withMiddleware(Authenticate::class);
+$router->get('/menu-generator/edit', [MenuGeneratorController::class, 'edit'])->withMiddleware(Authenticate::class);
+$router->post('/menu-generator/update', [MenuGeneratorController::class, 'update'])->withMiddleware(Authenticate::class);
+$router->post('/menu-generator/generate', [MenuGeneratorController::class, 'generate'])->withMiddleware(Authenticate::class);
+$router->post('/menu-generator/delete', [MenuGeneratorController::class, 'delete'])->withMiddleware(Authenticate::class);
+$router->post('/menu-generator/delete-generated', [MenuGeneratorController::class, 'deleteGenerated'])->withMiddleware(Authenticate::class);
+
+// [MenuGenerator:Start]
+// Auto-generated routes from menu_generator (status=generated).
+$router->get('/kategori', [\App\Controllers\KategoriController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/kategori/datatable', [\App\Controllers\KategoriController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/kategori', [\App\Controllers\KategoriController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/kategori/{id}/update', [\App\Controllers\KategoriController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/kategori/{id}/delete', [\App\Controllers\KategoriController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/satuan', [\App\Controllers\SatuanController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/satuan/datatable', [\App\Controllers\SatuanController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/satuan', [\App\Controllers\SatuanController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/satuan/{id}/update', [\App\Controllers\SatuanController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/satuan/{id}/delete', [\App\Controllers\SatuanController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/barang', [\App\Controllers\BarangController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/barang/datatable', [\App\Controllers\BarangController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/barang', [\App\Controllers\BarangController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/barang/{id}/update', [\App\Controllers\BarangController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/barang/{id}/delete', [\App\Controllers\BarangController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/jasa', [\App\Controllers\JasaController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/jasa/datatable', [\App\Controllers\JasaController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/jasa', [\App\Controllers\JasaController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/jasa/{id}/update', [\App\Controllers\JasaController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/jasa/{id}/delete', [\App\Controllers\JasaController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/pelanggan', [\App\Controllers\PelangganController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/pelanggan/datatable', [\App\Controllers\PelangganController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/pelanggan', [\App\Controllers\PelangganController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/pelanggan/{id}/update', [\App\Controllers\PelangganController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/pelanggan/{id}/delete', [\App\Controllers\PelangganController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/supplier', [\App\Controllers\SupplierController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/supplier/datatable', [\App\Controllers\SupplierController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/supplier', [\App\Controllers\SupplierController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/supplier/{id}/update', [\App\Controllers\SupplierController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/supplier/{id}/delete', [\App\Controllers\SupplierController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/diskon', [\App\Controllers\DiskonController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/diskon/datatable', [\App\Controllers\DiskonController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/diskon', [\App\Controllers\DiskonController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/diskon/{id}/update', [\App\Controllers\DiskonController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/diskon/{id}/delete', [\App\Controllers\DiskonController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
+// [MenuGenerator:End]
+
+$router->post('/logout', [AuthController::class, 'logout'])->withMiddleware(Authenticate::class);
+
+// Keep starter page for reference/demo.
+$router->get('/home', [HomeController::class, 'index']);
+$router->post('/contact', [HomeController::class, 'submit']);
