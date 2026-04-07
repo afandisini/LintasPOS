@@ -18,6 +18,42 @@
         return 'Rp ' + n.toLocaleString('id-ID');
     }
 
+    function openModal(id) {
+        var modal = document.getElementById(id);
+        if (!modal) return;
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(el) {
+        var modal = el && el.classList.contains('cm-bg') ? el : (el ? el.closest('.cm-bg') : null);
+        if (!modal) return;
+        modal.classList.remove('show');
+        if (!document.querySelector('.cm-bg.show')) {
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Global modal close handlers (data-cm-close & backdrop click)
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('[data-cm-close]')) {
+            closeModal(e.target.closest('[data-cm-close]'));
+            return;
+        }
+        if (e.target.hasAttribute('data-cm-bg')) {
+            closeModal(e.target);
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.cm-bg.show').forEach(function (m) {
+                m.classList.remove('show');
+            });
+            document.body.style.overflow = '';
+        }
+    });
+
     // Tab switching
     document.addEventListener('click', function (e) {
         var tabBtn = e.target.closest('[data-lap-tab]');
@@ -314,11 +350,25 @@
         });
     }
 
+    function getKeuParams() {
+        var p = new URLSearchParams();
+        p.set('tab', 'keuangan');
+        var dari = document.getElementById('filterKeuTanggalDari').value;
+        var sampai = document.getElementById('filterKeuTanggalSampai').value;
+        var tipeArus = document.getElementById('filterKeuTipeArus').value;
+        var akun = document.getElementById('filterKeuAkun').value;
+        if (dari) p.set('tanggal_dari', dari);
+        if (sampai) p.set('tanggal_sampai', sampai);
+        if (tipeArus) p.set('tipe_arus', tipeArus);
+        if (akun) p.set('akun_keuangan_id', akun);
+        return p;
+    }
+
     // Event Listeners
     function initEventListeners() {
         var filterTipe = document.getElementById('filterTipe');
         var filterPeriode = document.getElementById('filterPeriode');
-        
+
         if (filterTipe) filterTipe.addEventListener('change', applyFilters);
         if (filterPeriode) {
             filterPeriode.addEventListener('change', function () {
@@ -341,6 +391,7 @@
             });
         }
 
+        // Reset Transaksi
         var btnResetFilter = document.getElementById('btnResetFilter');
         if (btnResetFilter) {
             btnResetFilter.addEventListener('click', function () {
@@ -359,11 +410,13 @@
             });
         }
 
+        // Export Transaksi
         var btnExportPdf = document.getElementById('btnExportPdf');
         if (btnExportPdf) {
             btnExportPdf.addEventListener('click', function () {
                 var f = getFilters();
                 var p = new URLSearchParams();
+                p.set('tab', 'transaksi');
                 p.set('tipe', f.tipe);
                 if (f.tanggal_dari) p.set('tanggal_dari', f.tanggal_dari);
                 if (f.tanggal_sampai) p.set('tanggal_sampai', f.tanggal_sampai);
@@ -372,10 +425,40 @@
                 if (f.id_kategori) p.set('id_kategori', f.id_kategori);
                 if (f.nama_produk) p.set('nama_produk', f.nama_produk);
                 if (f.payment_method) p.set('payment_method', f.payment_method);
-                window.open('/laporan/export?tab=transaksi&' + p.toString(), '_blank');
+                document.getElementById('pdfPreviewTransaksi').src = '/laporan/export?' + p.toString();
+                openModal('cmExportTransaksi');
             });
         }
 
+        var btnCetakTransaksi = document.getElementById('btnCetakTransaksi');
+        if (btnCetakTransaksi) {
+            btnCetakTransaksi.addEventListener('click', function () {
+                window.open(document.getElementById('pdfPreviewTransaksi').src, '_blank');
+                closeModal(document.getElementById('cmExportTransaksi'));
+            });
+        }
+
+        var btnUnduhTransaksi = document.getElementById('btnUnduhTransaksi');
+        if (btnUnduhTransaksi) {
+            btnUnduhTransaksi.addEventListener('click', function () {
+                var f = getFilters();
+                var p = new URLSearchParams();
+                p.set('tab', 'transaksi');
+                p.set('tipe', f.tipe);
+                p.set('download', '1');
+                if (f.tanggal_dari) p.set('tanggal_dari', f.tanggal_dari);
+                if (f.tanggal_sampai) p.set('tanggal_sampai', f.tanggal_sampai);
+                if (f.id_pelanggan) p.set('id_pelanggan', f.id_pelanggan);
+                if (f.nm_supplier) p.set('nm_supplier', f.nm_supplier);
+                if (f.id_kategori) p.set('id_kategori', f.id_kategori);
+                if (f.nama_produk) p.set('nama_produk', f.nama_produk);
+                if (f.payment_method) p.set('payment_method', f.payment_method);
+                window.location.href = '/laporan/export?' + p.toString();
+                closeModal(document.getElementById('cmExportTransaksi'));
+            });
+        }
+
+        // Rugi Laba
         var filterTahunRugiLaba = document.getElementById('filterTahunRugiLaba');
         if (filterTahunRugiLaba) {
             filterTahunRugiLaba.addEventListener('change', function () {
@@ -395,10 +478,29 @@
         if (btnExportRugiLaba) {
             btnExportRugiLaba.addEventListener('click', function () {
                 var tahun = document.getElementById('filterTahunRugiLaba').value;
-                window.open('/laporan/export?tab=rugi-laba&tahun=' + tahun, '_blank');
+                document.getElementById('pdfPreviewRugiLaba').src = '/laporan/export?tab=rugi-laba&tahun=' + tahun;
+                openModal('cmExportRugiLaba');
             });
         }
 
+        var btnCetakRugiLaba = document.getElementById('btnCetakRugiLaba');
+        if (btnCetakRugiLaba) {
+            btnCetakRugiLaba.addEventListener('click', function () {
+                window.open(document.getElementById('pdfPreviewRugiLaba').src, '_blank');
+                closeModal(document.getElementById('cmExportRugiLaba'));
+            });
+        }
+
+        var btnUnduhRugiLaba = document.getElementById('btnUnduhRugiLaba');
+        if (btnUnduhRugiLaba) {
+            btnUnduhRugiLaba.addEventListener('click', function () {
+                var tahun = document.getElementById('filterTahunRugiLaba').value;
+                window.location.href = '/laporan/export?tab=rugi-laba&tahun=' + tahun + '&download=1';
+                closeModal(document.getElementById('cmExportRugiLaba'));
+            });
+        }
+
+        // Keuangan filters
         ['filterKeuTanggalDari', 'filterKeuTanggalSampai', 'filterKeuTipeArus', 'filterKeuAkun'].forEach(function (id) {
             var el = document.getElementById(id);
             if (el) {
@@ -422,55 +524,26 @@
         var btnExportKeuangan = document.getElementById('btnExportKeuangan');
         if (btnExportKeuangan) {
             btnExportKeuangan.addEventListener('click', function () {
-                var dari = document.getElementById('filterKeuTanggalDari').value;
-                var sampai = document.getElementById('filterKeuTanggalSampai').value;
-                var tipeArus = document.getElementById('filterKeuTipeArus').value;
-                var akun = document.getElementById('filterKeuAkun').value;
-                var p = new URLSearchParams();
-                p.set('tab', 'keuangan');
-                if (dari) p.set('tanggal_dari', dari);
-                if (sampai) p.set('tanggal_sampai', sampai);
-                if (tipeArus) p.set('tipe_arus', tipeArus);
-                if (akun) p.set('akun_keuangan_id', akun);
-                var pdfUrl = '/laporan/export?' + p.toString();
-                document.getElementById('pdfPreviewKeuangan').src = pdfUrl;
+                document.getElementById('pdfPreviewKeuangan').src = '/laporan/export?' + getKeuParams().toString();
+                openModal('cmExportKeuangan');
             });
         }
 
         var btnCetakKeuangan = document.getElementById('btnCetakKeuangan');
         if (btnCetakKeuangan) {
             btnCetakKeuangan.addEventListener('click', function () {
-                var dari = document.getElementById('filterKeuTanggalDari').value;
-                var sampai = document.getElementById('filterKeuTanggalSampai').value;
-                var tipeArus = document.getElementById('filterKeuTipeArus').value;
-                var akun = document.getElementById('filterKeuAkun').value;
-                var p = new URLSearchParams();
-                p.set('tab', 'keuangan');
-                if (dari) p.set('tanggal_dari', dari);
-                if (sampai) p.set('tanggal_sampai', sampai);
-                if (tipeArus) p.set('tipe_arus', tipeArus);
-                if (akun) p.set('akun_keuangan_id', akun);
-                window.open('/laporan/export?' + p.toString(), '_blank');
-                document.getElementById('cmExportKeuangan').style.display = 'none';
+                window.open('/laporan/export?' + getKeuParams().toString(), '_blank');
+                closeModal(document.getElementById('cmExportKeuangan'));
             });
         }
 
         var btnUnduhKeuangan = document.getElementById('btnUnduhKeuangan');
         if (btnUnduhKeuangan) {
             btnUnduhKeuangan.addEventListener('click', function () {
-                var dari = document.getElementById('filterKeuTanggalDari').value;
-                var sampai = document.getElementById('filterKeuTanggalSampai').value;
-                var tipeArus = document.getElementById('filterKeuTipeArus').value;
-                var akun = document.getElementById('filterKeuAkun').value;
-                var p = new URLSearchParams();
-                p.set('tab', 'keuangan');
+                var p = getKeuParams();
                 p.set('download', '1');
-                if (dari) p.set('tanggal_dari', dari);
-                if (sampai) p.set('tanggal_sampai', sampai);
-                if (tipeArus) p.set('tipe_arus', tipeArus);
-                if (akun) p.set('akun_keuangan_id', akun);
                 window.location.href = '/laporan/export?' + p.toString();
-                document.getElementById('cmExportKeuangan').style.display = 'none';
+                closeModal(document.getElementById('cmExportKeuangan'));
             });
         }
     }

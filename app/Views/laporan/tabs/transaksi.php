@@ -10,7 +10,7 @@ $paymentMethods = $paymentMethods ?? [];
         <span class="panel-title"><i class="bi bi-funnel me-1"></i> Filter Laporan</span>
         <div class="d-flex gap-2">
             <button type="button" class="btn-g btn-sm" id="btnResetFilter"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
-            <button type="button" class="btn-a btn-sm" id="btnExportPdf"><i class="bi bi-file-earmark-pdf"></i> Export PDF A4</button>
+            <button type="button" class="btn-a btn-sm" id="btnExportPdf"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
         </div>
     </div>
     <div class="panel-body">
@@ -48,7 +48,7 @@ $paymentMethods = $paymentMethods ?? [];
                     <?php foreach ($pelangganOptions as $p): ?>
                         <?php if (!is_array($p)) continue; ?>
                         <option value="<?= e((string) ($p['id'] ?? '')) ?>">
-<?= e((string) ($p['nama_pelanggan'] ?? '-')) ?></option>
+                            <?= e((string) ($p['nama_pelanggan'] ?? '-')) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -103,14 +103,14 @@ $paymentMethods = $paymentMethods ?? [];
         <div style="font-size:22px;font-weight:700;color:var(--success);" id="cardGrandTotal">—</div>
     </div>
     <?php if ($canViewModal): ?>
-    <div class="panel" style="flex:1;min-width:140px;padding:14px 18px;">
-        <div class="small text-muted mb-1"><i class="bi bi-bag me-1"></i>Total Modal</div>
-        <div style="font-size:22px;font-weight:700;color:var(--danger);" id="cardTotalModal">—</div>
-    </div>
-    <div class="panel" style="flex:1;min-width:140px;padding:14px 18px;">
-        <div class="small text-muted mb-1"><i class="bi bi-graph-up-arrow me-1"></i>Laba Kotor</div>
-        <div style="font-size:22px;font-weight:700;color:var(--accent);" id="cardLaba">—</div>
-    </div>
+        <div class="panel" style="flex:1;min-width:140px;padding:14px 18px;">
+            <div class="small text-muted mb-1"><i class="bi bi-bag me-1"></i>Total Modal</div>
+            <div style="font-size:22px;font-weight:700;color:var(--danger);" id="cardTotalModal">—</div>
+        </div>
+        <div class="panel" style="flex:1;min-width:140px;padding:14px 18px;">
+            <div class="small text-muted mb-1"><i class="bi bi-graph-up-arrow me-1"></i>Laba Kotor</div>
+            <div style="font-size:22px;font-weight:700;color:var(--accent);" id="cardLaba">—</div>
+        </div>
     <?php endif; ?>
 </div>
 
@@ -121,7 +121,9 @@ $paymentMethods = $paymentMethods ?? [];
     <div class="panel-body">
         <div class="dt-wrap">
             <table class="dtable w-100 nowrap" id="laporanTable">
-                <thead><tr id="laporanTableHead"></tr></thead>
+                <thead>
+                    <tr id="laporanTableHead"></tr>
+                </thead>
                 <tbody></tbody>
             </table>
         </div>

@@ -6,6 +6,7 @@
     if (!modal) return;
     modal.classList.add("show");
     document.body.style.overflow = "hidden";
+    if (typeof window.csEnhance === 'function') window.csEnhance(modal);
   }
 
   function closeModal(element) {
@@ -395,25 +396,23 @@
   }
 
   function bindGenericModalHandlers() {
-    document.querySelectorAll("[data-cm-open]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var id = btn.getAttribute("data-cm-open") || "";
+    document.addEventListener("click", function (event) {
+      var openBtn = event.target instanceof Element ? event.target.closest("[data-cm-open]") : null;
+      if (openBtn) {
+        var id = openBtn.getAttribute("data-cm-open") || "";
         if (id !== "") openModal(id);
-      });
-    });
+        return;
+      }
 
-    document.querySelectorAll("[data-cm-close]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        closeModal(btn);
-      });
-    });
+      var closeBtn = event.target instanceof Element ? event.target.closest("[data-cm-close]") : null;
+      if (closeBtn) {
+        closeModal(closeBtn);
+        return;
+      }
 
-    document.querySelectorAll("[data-cm-bg]").forEach(function (bg) {
-      bg.addEventListener("click", function (event) {
-        if (event.target === bg) {
-          closeModal(bg);
-        }
-      });
+      if (event.target instanceof Element && event.target.hasAttribute("data-cm-bg")) {
+        closeModal(event.target);
+      }
     });
   }
 

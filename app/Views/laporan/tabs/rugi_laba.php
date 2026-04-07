@@ -5,7 +5,7 @@ $canViewModal = $canViewModal ?? false;
     <div class="panel-head">
         <span class="panel-title"><i class="bi bi-funnel me-1"></i> Filter Rugi Laba</span>
         <div class="d-flex gap-2">
-            <button type="button" class="btn-a btn-sm" id="btnExportRugiLaba"><i class="bi bi-file-pdf"></i> Export PDF Rugi Laba</button>
+            <button type="button" class="btn-a btn-sm" id="btnExportRugiLaba"><i class="bi bi-file-pdf"></i> Export PDF</button>
             <button type="button" class="btn-g btn-sm" id="btnResetRugiLaba"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
         </div>
     </div>

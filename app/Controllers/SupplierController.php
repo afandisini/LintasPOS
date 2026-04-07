@@ -734,12 +734,21 @@ class SupplierController
             }
         }
 
+        // Pass 1: exact match
         foreach (['nama', 'name', 'title', 'kode', 'code', 'label'] as $preferred) {
             if (in_array($preferred, $columns, true)) {
                 return $preferred;
             }
         }
 
+        // Pass 2: kolom yang mengandung kata nama/name (misal nama_barang, nama_jasa)
+        foreach ($columns as $column) {
+            if (str_contains($column, 'nama') || str_contains($column, 'name')) {
+                return $column;
+            }
+        }
+
+        // Pass 3: kolom non-id pertama
         foreach ($columns as $column) {
             if ($column !== 'id' && !str_ends_with($column, '_id')) {
                 return $column;

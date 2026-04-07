@@ -1,4 +1,5 @@
 <?php
+
 /** @var string $title */
 /** @var array<string,mixed> $auth */
 /** @var string $activeMenu */
@@ -18,7 +19,9 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
     <div class="pg-header mb-3 anim">
         <h1><?= e($title ?? 'Laporan') ?></h1>
         <div class="d-flex align-items-center justify-content-between flex-wrap">
-            <div><p class="small">Laporan Penjualan, Pembelian, Rugi Laba, dan Keuangan</p></div>
+            <div>
+                <p class="small">Laporan Penjualan, Pembelian, Rugi Laba, dan Keuangan</p>
+            </div>
             <div>
                 <?= raw(view('partials/dashboard/breadcrumb', [
                     'items' => [['label' => 'Dashboard', 'url' => site_url('dashboard')]],
@@ -50,9 +53,45 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
     </div>
 </main>
 
+<!-- Modal Export Transaksi -->
+<div class="cm-bg" id="cmExportTransaksi" data-cm-bg>
+    <div class="panel cm-box cm-box-lg h-100" role="dialog" aria-modal="true" aria-labelledby="cmExportTransaksiTitle" style="max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="panel-head">
+            <span class="panel-title" id="cmExportTransaksiTitle"><i class="bi bi-file-pdf me-1"></i> Preview Laporan Transaksi</span>
+            <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="panel-body" style="flex: 1; overflow: auto; padding: 0;">
+            <iframe id="pdfPreviewTransaksi" style="width: 100%; height: 100%; border: none;" src=""></iframe>
+        </div>
+        <div class="cm-foot">
+            <button type="button" class="btn-g" data-cm-close>Batal</button>
+            <button type="button" class="btn-a" id="btnCetakTransaksi"><i class="bi bi-printer me-1"></i> Cetak</button>
+            <button type="button" class="btn-a" id="btnUnduhTransaksi"><i class="bi bi-download me-1"></i> Unduh PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Export Rugi Laba -->
+<div class="cm-bg" id="cmExportRugiLaba" data-cm-bg>
+    <div class="panel cm-box cm-box-lg h-100" role="dialog" aria-modal="true" aria-labelledby="cmExportRugiLabaTitle" style="max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="panel-head">
+            <span class="panel-title" id="cmExportRugiLabaTitle"><i class="bi bi-file-pdf me-1"></i> Preview Laporan Rugi Laba</span>
+            <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="panel-body" style="flex: 1; overflow: auto; padding: 0;">
+            <iframe id="pdfPreviewRugiLaba" style="width: 100%; height: 100%; border: none;" src=""></iframe>
+        </div>
+        <div class="cm-foot">
+            <button type="button" class="btn-g" data-cm-close>Batal</button>
+            <button type="button" class="btn-a" id="btnCetakRugiLaba"><i class="bi bi-printer me-1"></i> Cetak</button>
+            <button type="button" class="btn-a" id="btnUnduhRugiLaba"><i class="bi bi-download me-1"></i> Unduh PDF</button>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Export Keuangan -->
 <div class="cm-bg" id="cmExportKeuangan" data-cm-bg>
-    <div class="panel cm-box cm-box-lg" role="dialog" aria-modal="true" aria-labelledby="cmExportKeuanganTitle" style="max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="panel cm-box cm-box-lg h-100" role="dialog" aria-modal="true" aria-labelledby="cmExportKeuanganTitle" style="max-height: 90vh; display: flex; flex-direction: column;">
         <div class="panel-head">
             <span class="panel-title" id="cmExportKeuanganTitle"><i class="bi bi-file-pdf me-1"></i> Preview Laporan Keuangan</span>
             <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
@@ -74,6 +113,8 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
 <script src="<?= e(base_url('assets/vendor/jquery/jquery-3.7.1.min.js')) ?>"></script>
 <script src="<?= e(base_url('assets/vendor/datatables/jquery.dataTables.min.js')) ?>"></script>
 <script src="<?= e(base_url('assets/vendor/datatables/dataTables.bootstrap5.min.js')) ?>"></script>
-<script>window.laporanCanViewModal = <?= json_encode($canViewModal) ?>;</script>
-<script src="<?= e(base_url('assets/js/laporan.js')) ?>"></script>
+<script>
+    window.laporanCanViewModal = <?= json_encode($canViewModal) ?>;
+</script>
+<?= raw(module_script('Laporan/js/laporan.js')) ?>
 <?= raw(view('partials/dashboard/shell_close')) ?>

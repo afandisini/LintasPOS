@@ -107,6 +107,24 @@ class TransaksiController
                 throw new RuntimeException('Item tidak ditemukan.');
             }
 
+            // Cek diskon aktif untuk barang
+            $diskonAktif = 0;
+            if ($itemType === 'barang') {
+                $today = date('Y-m-d');
+                $stmtD = $pdo->prepare(
+                    'SELECT diskon FROM diskon
+                     WHERE deleted_at IS NULL AND barang_id = :barang_id
+                       AND (tgl_start IS NULL OR tgl_start <= :today)
+                       AND (tgl_end IS NULL OR tgl_end >= :today)
+                     ORDER BY id DESC LIMIT 1'
+                );
+                $stmtD->execute(['barang_id' => $itemId, 'today' => $today]);
+                $diskonRow = $stmtD->fetch(PDO::FETCH_ASSOC);
+                if (is_array($diskonRow)) {
+                    $diskonAktif = max(0, (int) ($diskonRow['diskon'] ?? 0));
+                }
+            }
+
             $stmtExisting = $pdo->prepare('SELECT id, jumlah FROM keranjang WHERE id_member = :id_member AND item_type = :item_type AND item_ref_id = :item_ref_id LIMIT 1');
             $stmtExisting->execute(['id_member' => $memberId, 'item_type' => $itemType, 'item_ref_id' => $itemId]);
             $existing = $stmtExisting->fetch(PDO::FETCH_ASSOC);
@@ -116,15 +134,16 @@ class TransaksiController
             }
 
             if (is_array($existing)) {
-                $update = $pdo->prepare('UPDATE keranjang SET jumlah = :jumlah, beli = :beli, jual = :jual, updated_at = NOW() WHERE id = :id');
+                $update = $pdo->prepare('UPDATE keranjang SET jumlah = :jumlah, beli = :beli, jual = :jual, diskon = :diskon, updated_at = NOW() WHERE id = :id');
                 $update->execute([
                     'jumlah' => (string) $newQty,
                     'beli' => (int) ($item['beli'] ?? 0),
                     'jual' => (int) ($item['jual'] ?? 0),
+                    'diskon' => $diskonAktif,
                     'id' => (int) ($existing['id'] ?? 0),
                 ]);
             } else {
-                $insert = $pdo->prepare('INSERT INTO keranjang (id_barang, item_type, item_ref_id, id_member, nama_barang, diskon, jumlah, beli, jual, tanggal_input, created_at, updated_at) VALUES (:id_barang, :item_type, :item_ref_id, :id_member, :nama_barang, 0, :jumlah, :beli, :jual, :tanggal_input, NOW(), NOW())');
+                $insert = $pdo->prepare('INSERT INTO keranjang (id_barang, item_type, item_ref_id, id_member, nama_barang, diskon, jumlah, beli, jual, tanggal_input, created_at, updated_at) VALUES (:id_barang, :item_type, :item_ref_id, :id_member, :nama_barang, :diskon, :jumlah, :beli, :jual, :tanggal_input, NOW(), NOW())');
                 $insert->execute([
                     'id_barang' => (string) ($item['code'] ?? ''),
                     'item_type' => $itemType,
@@ -134,6 +153,7 @@ class TransaksiController
                     'jumlah' => (string) $newQty,
                     'beli' => (int) ($item['beli'] ?? 0),
                     'jual' => (int) ($item['jual'] ?? 0),
+                    'diskon' => $diskonAktif,
                     'tanggal_input' => date('Y-m-d'),
                 ]);
             }
@@ -1144,7 +1164,12 @@ class TransaksiController
 
             $saldoKas = (new KeuanganService($pdo))->saldoKasSaatIni();
             if ($saldoKas < $totalPo) {
-                throw new RuntimeException('Saldo kas belum cukup untuk approve PO ini.');
+                throw new RuntimeException(
+                    'Saldo kas tidak mencukupi untuk approve PO ini. '
+                    . 'Saldo saat ini: Rp ' . number_format($saldoKas, 0, ',', '.') . ', '
+                    . 'dibutuhkan: Rp ' . number_format($totalPo, 0, ',', '.') . '. '
+                    . 'Tambah modal/kas terlebih dahulu.'
+                );
             }
 
             $stmtDet = $pdo->prepare('SELECT id_barang, qty, beli FROM pembelian_detail WHERE no_trx = :no_trx ORDER BY id ASC');
@@ -1359,7 +1384,7 @@ class TransaksiController
             }
             $keteranganFinal .= 'Metode: ' . $paymentMethod;
             if ($isPo) {
-                $keteranganFinal .= ' | Status: PO (Kas tidak cukup / saldo awal belum tersedia)';
+                $keteranganFinal .= ' | PO: Saldo kas Rp ' . number_format($saldoKas, 0, ',', '.') . ' < kebutuhan Rp ' . number_format($grandTotal, 0, ',', '.');
             }
 
             $insHead = $pdo->prepare('INSERT INTO pembelian (nm_supplier, no_trx, id_member, jumlah, beli, keterangan, status_bayar, tanggal_input, created_at, periode) VALUES (:nm_supplier, :no_trx, :id_member, :jumlah, :beli, :keterangan, :status_bayar, :tanggal_input, NOW(), :periode)');
@@ -1411,7 +1436,14 @@ class TransaksiController
             $pdo->commit();
 
             if ($isPo) {
-                toast_add('Transaksi dibuat sebagai PO. No transaksi: ' . $noTrx . '. Stok tidak ditambah karena saldo kas belum cukup.', 'warning');
+                $saldoFmt = 'Rp ' . number_format($saldoKas, 0, ',', '.');
+                $totalFmt = 'Rp ' . number_format($grandTotal, 0, ',', '.');
+                toast_add(
+                    'Transaksi dibuat sebagai PO (' . $noTrx . '). '
+                    . 'Saldo kas ' . $saldoFmt . ' tidak mencukupi kebutuhan ' . $totalFmt . '. '
+                    . 'Stok belum ditambah - tunggu approval PO.',
+                    'warning'
+                );
             } else {
                 toast_add('Checkout pembelian berhasil. No transaksi: ' . $noTrx . '.', 'success');
             }
@@ -1609,7 +1641,39 @@ class TransaksiController
              ORDER BY b.nama_barang ASC, b.id ASC
              LIMIT 500'
         )->fetchAll(PDO::FETCH_ASSOC);
-        return is_array($rows) ? $rows : [];
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        // Inject diskon aktif per barang
+        $today = date('Y-m-d');
+        $diskonMap = [];
+        try {
+            $stmtD = $pdo->prepare(
+                'SELECT barang_id, diskon FROM diskon
+                 WHERE deleted_at IS NULL
+                   AND (tgl_start IS NULL OR tgl_start <= :today)
+                   AND (tgl_end IS NULL OR tgl_end >= :today)
+                 ORDER BY id DESC'
+            );
+            $stmtD->execute(['today' => $today]);
+            foreach ($stmtD->fetchAll(PDO::FETCH_ASSOC) as $d) {
+                $bid = (string) ($d['barang_id'] ?? '');
+                if ($bid !== '' && !isset($diskonMap[$bid])) {
+                    $diskonMap[$bid] = max(0, (int) ($d['diskon'] ?? 0));
+                }
+            }
+        } catch (Throwable) {
+        }
+
+        foreach ($rows as &$row) {
+            $bid = (string) ($row['id'] ?? '');
+            $row['diskon_aktif'] = $diskonMap[$bid] ?? 0;
+            $row['harga_jual_diskon'] = max(0, (int) ($row['harga_jual'] ?? 0) - ($row['diskon_aktif']));
+        }
+        unset($row);
+
+        return $rows;
     }
 
     /**

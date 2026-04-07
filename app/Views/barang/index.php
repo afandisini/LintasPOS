@@ -152,10 +152,11 @@ $dataTablesHead = raw(
                         $label = (string) ($column['label'] ?? $name);
                         $inputType = (string) ($column['input_type'] ?? 'text');
                         $required = (bool) ($column['required'] ?? false);
-                        $targetModernFields = ['stok', 'exp_date', 'tgl_input', 'tgl_update'];
+                        $targetModernFields = ['exp_date', 'tgl_input', 'tgl_update'];
                         $isModernTarget = in_array(strtolower($name), $targetModernFields, true);
                         $relationMeta = is_array($relations[$name] ?? null) ? $relations[$name] : null;
                         $relationOptions = is_array($relationMeta['options'] ?? null) ? $relationMeta['options'] : [];
+                        if (strtolower($name) === 'stok') continue;
                         ?>
                         <div class="<?= $isModernTarget ? 'barang-modern-target' : '' ?>">
                             <label class="u-label"><?= e($label) ?><?= $required ? ' *' : '' ?></label>
@@ -204,10 +205,11 @@ $dataTablesHead = raw(
                         $label = (string) ($column['label'] ?? $name);
                         $inputType = (string) ($column['input_type'] ?? 'text');
                         $required = (bool) ($column['required'] ?? false);
-                        $targetModernFields = ['stok', 'exp_date', 'tgl_input', 'tgl_update'];
+                        $targetModernFields = ['exp_date', 'tgl_input', 'tgl_update'];
                         $isModernTarget = in_array(strtolower($name), $targetModernFields, true);
                         $relationMeta = is_array($relations[$name] ?? null) ? $relations[$name] : null;
                         $relationOptions = is_array($relationMeta['options'] ?? null) ? $relationMeta['options'] : [];
+                        if (strtolower($name) === 'stok') continue;
                         ?>
                         <div class="<?= $isModernTarget ? 'barang-modern-target' : '' ?>">
                             <label class="u-label"><?= e($label) ?><?= $required ? ' *' : '' ?></label>

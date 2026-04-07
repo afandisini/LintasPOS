@@ -167,11 +167,11 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                 <div class="fg">
                     <div class="pos-kembalian-row pos-nol pos-balance-row">
                         <span>Saldo Kas Saat Ini</span>
-                        <span id="purchaseSaldoKas"><?= e(format_currency_id((int) ($saldoKas ?? 0))) ?></span>
+                        <span id="purchaseSaldoKas" data-saldo="<?= e((string) ((int) ($saldoKas ?? 0))) ?>"><?= e(format_currency_id((int) ($saldoKas ?? 0))) ?></span>
                     </div>
                     <div class="row">
                         <div class="col-sm-7">
-                            <small class="text-muted small">Jika saldo kas tidak cukup, checkout otomatis menjadi PO.</small>
+                            <small class="text-muted small" id="purchaseSaldoInfo">Jika saldo kas tidak cukup, checkout otomatis menjadi PO.</small>
                         </div>
                         <div class="col-sm-5">
                             <button type="button" class="btn-g btn-sm pos-modal-quick-btn" data-cm-open="cmQuickModalPembelian"><i class="bi bi-plus-circle me-1"></i> Tambah Modal Cepat</button>
@@ -736,6 +736,24 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
             display.textContent = formatRp(numeric);
             if (!bayar._userEdited) {
                 bayar.value = String(numeric);
+            }
+
+            // Update indikator saldo cukup/tidak
+            var saldoEl = document.getElementById('purchaseSaldoKas');
+            var infoEl = document.getElementById('purchaseSaldoInfo');
+            var balanceRow = document.querySelector('.pos-balance-row');
+            if (saldoEl && balanceRow) {
+                var saldo = parseInt(saldoEl.getAttribute('data-saldo') || '0', 10) || 0;
+                balanceRow.classList.remove('pos-lebih', 'pos-kurang', 'pos-nol');
+                if (numeric === 0) {
+                    balanceRow.classList.add('pos-nol');
+                } else if (saldo >= numeric) {
+                    balanceRow.classList.add('pos-lebih');
+                    if (infoEl) infoEl.textContent = 'Saldo mencukupi. Pembelian akan langsung diproses.';
+                } else {
+                    balanceRow.classList.add('pos-kurang');
+                    if (infoEl) infoEl.textContent = 'Saldo kas Rp ' + saldo.toLocaleString('id-ID') + ' tidak cukup untuk Rp ' + numeric.toLocaleString('id-ID') + '. Transaksi akan menjadi PO.';
+                }
             }
         }
 

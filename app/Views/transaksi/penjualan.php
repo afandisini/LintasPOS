@@ -511,12 +511,17 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                         $itemPrice = max(0, (int) ($item['harga_jual'] ?? 0));
                         $itemStock = max(0, (int) ($item['stok'] ?? 0));
                         $itemImage = $mediaUrl($item['gambar_path'] ?? $item['gambar'] ?? '');
+                        $itemDiskon = max(0, (int) ($item['diskon_aktif'] ?? 0));
+                        $itemPriceAfter = max(0, (int) ($item['harga_jual_diskon'] ?? $itemPrice));
                         ?>
                         <article class="pos-pick-card" data-pick-item data-item-type="barang" data-item-id="<?= e((string) $itemId) ?>">
                             <label class="pos-pick-select">
                                 <input type="checkbox" class="pos-pick-check" data-pick-check <?= $itemStock > 0 ? '' : 'disabled' ?>>
                                 <span>Pilih</span>
                             </label>
+                            <?php if ($itemDiskon > 0): ?>
+                                <span class="pos-diskon-badge"><i class="bi bi-tag-fill"></i> Diskon</span>
+                            <?php endif; ?>
                             <div class="pos-pick-cover">
                                 <?php if ($itemImage !== ''): ?>
                                     <img src="<?= e($itemImage) ?>" alt="<?= e($itemName) ?>" loading="lazy">
@@ -528,7 +533,14 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                             <div class="pos-pick-main">
                                 <div class="pos-pick-name"><?= e($itemName) ?></div>
                                 <div class="pos-pick-meta"><?= e($itemCode) ?></div>
-                                <div class="pos-pick-price"><?= e(format_currency_id($itemPrice)) ?></div>
+                                <?php if ($itemDiskon > 0): ?>
+                                    <div class="pos-pick-price-wrap">
+                                        <span class="pos-pick-price-strike"><?= e(format_currency_id($itemPrice)) ?></span>
+                                        <span class="pos-pick-price pos-pick-price-diskon"><?= e(format_currency_id($itemPriceAfter)) ?></span>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="pos-pick-price"><?= e(format_currency_id($itemPrice)) ?></div>
+                                <?php endif; ?>
                                 <span class="sbadge <?= $itemStock > 0 ? 'scc' : 'wrn' ?>">Stok: <?= e((string) $itemStock) ?></span>
                             </div>
                             <div class="pos-pick-qty">

@@ -1272,6 +1272,168 @@ select.fi {
   cursor: pointer;
 }
 
+/* ── Custom Select (cs-*) ─────────────────────────────────────── */
+.cs-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.cs-wrap select {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.cs-trigger {
+  width: 100%;
+  height: 40px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.cs-trigger:focus,
+.cs-open .cs-trigger {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.cs-val {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-arrow {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.cs-open .cs-arrow {
+  transform: rotate(180deg);
+}
+
+.cs-panel {
+  position: absolute;
+  z-index: 1090;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 180px;
+  margin-top: 4px;
+}
+
+.cs-panel.cs-up {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
+.cs-open.cs-panel,
+.cs-panel.cs-open {
+  display: flex;
+}
+
+.cs-search-wrap {
+  padding: 8px 8px 6px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cs-search {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.cs-search:focus {
+  border-color: var(--accent);
+}
+
+.cs-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.cs-opt {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cs-opt:hover {
+  background: var(--bg-secondary);
+}
+
+.cs-opt.cs-selected {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--accent-light);
+}
+
+.cs-opt.cs-disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+.cs-wrap.cs-disabled .cs-trigger {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* u-input variant — match u-input sizing */
+.cs-wrap.cs-ui .cs-trigger {
+  height: auto;
+  min-height: 38px;
+  padding: 9px 36px 9px 10px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .cs-panel {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+/* ── End Custom Select ────────────────────────────────────────── */
+
 .fl {
   display: block;
   font-size: 12.5px;
@@ -1748,6 +1910,20 @@ select.fi {
   background: color-mix(in srgb, var(--bg-secondary) 94%, #000 6%);
 }
 
+.barang-modern-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.barang-modern-form .panel-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+
 .barang-modern-form .u-form-grid {
   gap: 12px;
 }
@@ -1978,6 +2154,24 @@ select.fi {
     transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
     opacity 0.3s ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.cm-box > .panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.cm-box .panel-body {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.cm-box .cm-foot {
+  flex-shrink: 0;
 }
 
 .cm-box-lg {
@@ -2765,6 +2959,43 @@ select.fi {
   font-size: 14px;
   color: var(--accent);
   font-weight: 800;
+}
+
+.pos-pick-price-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pos-pick-price-strike {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.pos-pick-price-diskon {
+  color: var(--danger);
+}
+
+.pos-diskon-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.pos-pick-card {
+  position: relative;
 }
 
 .pos-pick-qty {

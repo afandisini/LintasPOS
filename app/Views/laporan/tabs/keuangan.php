@@ -5,7 +5,7 @@ $akunOptions = $akunOptions ?? [];
     <div class="panel-head">
         <span class="panel-title"><i class="bi bi-funnel me-1"></i> Filter Keuangan</span>
         <div class="d-flex gap-2">
-            <button type="button" class="btn-a btn-sm" id="btnExportKeuangan" data-cm-open="cmExportKeuangan"><i class="bi bi-file-pdf"></i> Export PDF Keuangan</button>
+            <button type="button" class="btn-a btn-sm" id="btnExportKeuangan" data-cm-open="cmExportKeuangan"><i class="bi bi-file-pdf"></i> Export PDF</button>
             <button type="button" class="btn-g btn-sm" id="btnResetKeuangan"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
         </div>
     </div>
