@@ -17,6 +17,23 @@ LintasPOS adalah aplikasi POS (Point of Sale) fullstack yang dibangun di atas Ai
 - **Menu Generator** — generate CRUD modul baru tanpa coding manual
 - **Multi Role** — Kasir, Admin, SPV, Owner dengan hak akses berbeda
 
+## Rekomendasi Usaha
+
+LintasPOS paling cocok untuk usaha dengan pola **jual-beli stok + kas harian**:
+
+- **Toko ritel kecil-menengah** - sembako, minimarket lokal, alat tulis, toko bangunan kecil
+- **Bengkel + sparepart + jasa** - mendukung transaksi barang dan jasa dalam satu alur
+- **Toko elektronik / HP / aksesoris** - cocok untuk item cepat mutasi dan kebutuhan laporan periodik
+- **Apotek / toko kesehatan non-resep sederhana** - fokus pada kontrol stok, pembelian supplier, dan arus kas
+- **Toko fashion / sepatu** - mendukung promo diskon dan pelacakan performa penjualan
+- **Grosir skala kecil** - terbantu oleh alur pembelian dan PO saat kas belum mencukupi
+
+Kurang ideal untuk:
+
+- Bisnis murni booking/jadwal tanpa kebutuhan stok kuat
+- Restoran kompleks dengan kebutuhan kitchen display, split bill meja, dan recipe costing detail
+- E-commerce multi-warehouse/omnichannel skala besar
+
 ## Requirements
 
 - PHP 8.2+
