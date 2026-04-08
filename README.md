@@ -2,7 +2,11 @@
 
 **LintasPOS - Sistem Point of Sale berbasis AitiCore Flex**
 
+<<<<<<< Updated upstream
 ![LintasPOS Preview]([https://aiti-solutions.com/storage/filemanager/1/39/login-e7de485f0e970844c1fa4a7116ebebe2.webp](https://aiti-solutions.com/storage/filemanager/1/39/image_login-494ed577d8f68693bedb05935b4498fe.webp))
+=======
+![LintasPOS Preview](https://aiti-solutions.com/storage/filemanager/1/39/image_login-494ed577d8f68693bedb05935b4498fe.webp)
+>>>>>>> Stashed changes
 
 LintasPOS adalah aplikasi POS (Point of Sale) fullstack yang dibangun di atas AitiCore Flex — framework PHP ringan dengan baseline keamanan modern: escape output default, CSRF middleware, dan session hardening.
 
@@ -87,13 +91,13 @@ upgrade-guides/
 
 | Fitur              | Kasir | Admin | SPV | Owner |
 | ------------------ | :---: | :---: | :-: | :---: |
-| Penjualan          | ✅    | ✅    | ❌  | ✅    |
-| Pembelian          | ✅    | ✅    | ❌  | ✅    |
-| Lihat Harga Modal  | ❌    | ✅    | ✅  | ✅    |
-| Approve / Tolak PO | ❌    | ✅    | ✅  | ✅    |
-| Laporan            | ❌    | ✅    | ✅  | ✅    |
-| Keuangan           | ❌    | ✅    | ✅  | ✅    |
-| Menu Generator     | ❌    | ✅    | ❌  | ✅    |
+| Penjualan          |  ✅   |  ✅   | ❌  |  ✅   |
+| Pembelian          |  ✅   |  ✅   | ❌  |  ✅   |
+| Lihat Harga Modal  |  ❌   |  ✅   | ✅  |  ✅   |
+| Approve / Tolak PO |  ❌   |  ✅   | ✅  |  ✅   |
+| Laporan            |  ❌   |  ✅   | ✅  |  ✅   |
+| Keuangan           |  ❌   |  ✅   | ✅  |  ✅   |
+| Menu Generator     |  ❌   |  ✅   | ❌  |  ✅   |
 
 ## Alur Penjualan
 
@@ -155,17 +159,17 @@ php aiti upgrade:apply
 
 ### Laravel Mapping
 
-| Laravel                                 | LintasPOS / AitiCore Flex               |
-| --------------------------------------- | --------------------------------------- |
-| `php artisan optimize:clear`            | `php aiti optimize`                     |
-| `php artisan config:clear`              | `php aiti config:clear`                 |
-| `php artisan route:cache`               | `php aiti route:cache`                  |
-| `php artisan route:clear`               | `php aiti route:clear`                  |
-| `php artisan view:clear`                | `php aiti view:clear`                   |
-| `php artisan migrate`                   | `php aiti migrate update`               |
-| `php artisan migrate:fresh`             | `php aiti migrate drop`                 |
-| `php artisan migrate:status`            | `php aiti migrate status`               |
-| `php artisan migrate:rollback --step=1` | `php aiti migrate rollback --step=1`    |
+| Laravel                                 | LintasPOS / AitiCore Flex            |
+| --------------------------------------- | ------------------------------------ |
+| `php artisan optimize:clear`            | `php aiti optimize`                  |
+| `php artisan config:clear`              | `php aiti config:clear`              |
+| `php artisan route:cache`               | `php aiti route:cache`               |
+| `php artisan route:clear`               | `php aiti route:clear`               |
+| `php artisan view:clear`                | `php aiti view:clear`                |
+| `php artisan migrate`                   | `php aiti migrate update`            |
+| `php artisan migrate:fresh`             | `php aiti migrate drop`              |
+| `php artisan migrate:status`            | `php aiti migrate status`            |
+| `php artisan migrate:rollback --step=1` | `php aiti migrate rollback --step=1` |
 
 ## Routing Notes
 
