@@ -4,6 +4,7 @@
 .well-known/
 design_template/*
 database/*
+adminDev/*
 
 # File tertentu
 AGENT.md
