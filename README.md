@@ -1,16 +1,28 @@
-# AitiCore Flex
+# LintasPOS
 
-**AitiCore Flex - Lightweight & Secure PHP Framework**
+**LintasPOS - Sistem Point of Sale berbasis AitiCore Flex**
 
-![AitiCore Flex Preview](https://aiti-solutions.com/storage/filemanager/1/75e9c3cc2ad4828cf312c307e9d3095c.webp)
+![LintasPOS Preview](https://aiti-solutions.com/storage/filemanager/1/39/login-e7de485f0e970844c1fa4a7116ebebe2.webp)
 
-AitiCore Flex adalah framework PHP fullstack baseline keamanan modern: escape output default, CSRF middleware untuk route web, dan session hardening.
+LintasPOS adalah aplikasi POS (Point of Sale) fullstack yang dibangun di atas AitiCore Flex — framework PHP ringan dengan baseline keamanan modern: escape output default, CSRF middleware, dan session hardening.
+
+## Fitur Utama
+
+- **Transaksi Penjualan** — keranjang, diskon otomatis, hold transaksi, checkout multi metode pembayaran
+- **Transaksi Pembelian** — keranjang beli, Purchase Order (PO) otomatis saat saldo tidak cukup, approval PO
+- **Manajemen Produk** — Barang (dengan stok) dan Jasa (tanpa stok)
+- **Laporan** — penjualan, pembelian, modal, filter periode/produk/pelanggan/supplier, export PDF A4
+- **Keuangan** — chart of accounts, ledger mutasi kas terintegrasi ke transaksi
+- **File Manager** — upload gambar produk, visibilitas public/private per role
+- **Menu Generator** — generate CRUD modul baru tanpa coding manual
+- **Multi Role** — Kasir, Admin, SPV, Owner dengan hak akses berbeda
 
 ## Requirements
 
 - PHP 8.2+
 - Composer
 - ext-pdo, ext-mbstring, ext-openssl
+- MySQL / MariaDB
 
 ## Quick Start
 
@@ -20,6 +32,7 @@ Linux/macOS:
 cp .env.example .env
 composer install
 php aiti key:generate
+php aiti migrate update
 php aiti serve
 ```
 
@@ -29,6 +42,7 @@ Windows CMD:
 copy .env.example .env
 composer install
 php aiti key:generate
+php aiti migrate update
 php aiti serve
 ```
 
@@ -38,6 +52,7 @@ Windows PowerShell:
 Copy-Item .env.example .env
 composer install
 php aiti key:generate
+php aiti migrate update
 php aiti serve
 ```
 
@@ -47,21 +62,72 @@ Buka `http://127.0.0.1:8000`.
 
 ```text
 app/
-  Config/
   Controllers/
   Middleware/
-  Requests/
+  Modules/
   Services/
-  Models/
   Views/
-  Helpers/
 bootstrap/
+database/
+  update/
+  drop/
+design_template/
 public/
 routes/
 storage/
+  filemanager/
+  sessions/
+  cache/
 system/
 tests/
+upgrade-guides/
 ```
+
+## Role & Akses
+
+| Fitur              | Kasir | Admin | SPV | Owner |
+| ------------------ | :---: | :---: | :-: | :---: |
+| Penjualan          | ✅    | ✅    | ❌  | ✅    |
+| Pembelian          | ✅    | ✅    | ❌  | ✅    |
+| Lihat Harga Modal  | ❌    | ✅    | ✅  | ✅    |
+| Approve / Tolak PO | ❌    | ✅    | ✅  | ✅    |
+| Laporan            | ❌    | ✅    | ✅  | ✅    |
+| Keuangan           | ❌    | ✅    | ✅  | ✅    |
+| Menu Generator     | ❌    | ✅    | ❌  | ✅    |
+
+## Alur Penjualan
+
+```
+Tambah item ke keranjang
+  ├─ Barang: validasi stok + diskon aktif
+  └─ Jasa: langsung masuk tanpa cek stok
+      ↓
+[Opsional] Hold transaksi → lanjutkan nanti
+      ↓
+Checkout (pilih pelanggan, metode bayar, nominal)
+  ├─ Kurangi stok barang
+  ├─ Simpan penjualan + penjualan_detail
+  └─ Catat mutasi kas (pemasukan)
+```
+
+## Alur Pembelian
+
+```
+Tambah barang ke keranjang beli
+      ↓
+Checkout pembelian
+  ├─ [Saldo cukup]  → Lunas, stok langsung bertambah
+  └─ [Saldo kurang] → Dibuat sebagai PO (pending)
+                          ↓
+                    Approval PO oleh Admin/SPV/Owner
+                      ├─ Diterima → stok bertambah + mutasi kas (pengeluaran)
+                      └─ Ditolak  → PO dibatalkan
+```
+
+## Metode Pembayaran
+
+- Penjualan: `Cash`, `E-wallet`, `QRIS`, `Transfer Bank`
+- Pembelian: `Cash`, `Termin`
 
 ## CLI
 
@@ -75,8 +141,6 @@ php aiti route:list
 php aiti route:cache
 php aiti route:clear
 php aiti key:generate
-php aiti upgrade:check
-php aiti upgrade:apply
 php aiti migrate update
 php aiti migrate drop
 php aiti migrate status
@@ -85,91 +149,43 @@ php aiti preset:bootstrap
 php aiti optimize
 php aiti config:clear
 php aiti view:clear
+php aiti upgrade:check
+php aiti upgrade:apply
 ```
 
 ### Laravel Mapping
 
-| Laravel                      | AitiCore Flex           |
-| ---------------------------- | ----------------------- |
-| `php artisan optimize:clear` | `php aiti optimize`     |
-| `php artisan config:clear`   | `php aiti config:clear` |
-| `php artisan route:cache`    | `php aiti route:cache`  |
-| `php artisan route:clear`    | `php aiti route:clear`  |
-| `php artisan view:clear`     | `php aiti view:clear`   |
-| `php artisan migrate`        | `php aiti migrate update` |
-| `php artisan migrate:fresh`  | `php aiti migrate drop` |
-| `php artisan migrate:status` | `php aiti migrate status` |
-| `php artisan migrate:rollback --step=1` | `php aiti migrate rollback --step=1` |
+| Laravel                                 | LintasPOS / AitiCore Flex               |
+| --------------------------------------- | --------------------------------------- |
+| `php artisan optimize:clear`            | `php aiti optimize`                     |
+| `php artisan config:clear`              | `php aiti config:clear`                 |
+| `php artisan route:cache`               | `php aiti route:cache`                  |
+| `php artisan route:clear`               | `php aiti route:clear`                  |
+| `php artisan view:clear`                | `php aiti view:clear`                   |
+| `php artisan migrate`                   | `php aiti migrate update`               |
+| `php artisan migrate:fresh`             | `php aiti migrate drop`                 |
+| `php artisan migrate:status`            | `php aiti migrate status`               |
+| `php artisan migrate:rollback --step=1` | `php aiti migrate rollback --step=1`    |
 
 ## Routing Notes
 
-- `php aiti serve` sekarang selalu menjalankan `router.php`, jadi semua request masuk ke router yang sama.
-- Request `HEAD` otomatis dipetakan ke route `GET`, tetapi body response tidak dikirim.
-- Static asset seperti `/storage/...` atau file lain di `public/` akan dilayani langsung oleh PHP built-in server.
+- `php aiti serve` selalu menjalankan `router.php`, semua request masuk ke router yang sama.
+- Request `HEAD` otomatis dipetakan ke route `GET`, body response tidak dikirim.
+- Static asset seperti `/storage/...` atau file di `public/` dilayani langsung oleh PHP built-in server.
 
 ## Maintenance
 
 - `php aiti optimize` menjalankan clear berurutan untuk cache config, routes, dan views.
 - Command maintenance hanya menyentuh `storage/cache/*`.
-- Logs (`storage/logs`), sessions (`storage/sessions`), dan uploads (`storage/uploads`) tidak dihapus.
-
-## Safe Upgrade Policy
-
-### Core vs User Ownership
-
-- Framework core: `system/`, `bootstrap/`, `public/`, root tooling (`aiti`, `composer.json`, dll).
-- User app: `app/`, `routes/`, `database/`.
-- Updater **tidak boleh overwrite** path milik user.
-
-### SemVer Rules
-
-- `PATCH`: bugfix, no breaking change.
-- `MINOR`: fitur baru kompatibel ke belakang.
-- `MAJOR`: breaking change diperbolehkan dengan guide migrasi.
-- Setiap release wajib punya changelog + upgrade guide.
-
-### Upgrade Commands
-
-- `php aiti upgrade:check [--from=vX] [--target=vY]`
-  - read-only
-  - cek jalur upgrade
-  - scan konflik file
-  - tampilkan breaking/risk/deprecation list
-
-- `php aiti upgrade:apply [--from=vX] [--target=vY]`
-  - default `dry-run` (tidak ubah file)
-  - pakai `--apply` untuk eksekusi nyata
-  - simpan backup `*.bak.YmdHis` sebelum menyentuh file
-  - path user custom tetap di-skip
-
-### Upgrade Metadata
-
-- Catalog path: `upgrade-guides/index.php`
-- Guide per versi: `upgrade-guides/vX-to-vY.md`
-- Stub/patch template: `upgrade-guides/stubs/...`
-- Gunakan `strategy=replace` atau `strategy=marker_merge` untuk patch terkontrol.
-
-## Bootstrap Preset (Local Assets)
-
-Preset Bootstrap dan Bootstrap Icons dibundle di repo pada:
-`system/Presets/bootstrap`.
-
-Command ini menyalin aset bundled ke:
-`public/assets/vendor/...` tanpa butuh Node atau internet.
-
-```bash
-php aiti preset:bootstrap
-```
-
-Untuk developer, jika aset internal hilang, command akan fallback ke `node_modules`.
-End user tidak perlu menjalankan `npm install`.
+- Logs, sessions, dan uploads tidak dihapus.
 
 ## Security Defaults
 
 - Escaped output default di view (`<?= $var ?>` aman via escaper wrapper).
-- CSRF aktif pada grup route `web`.
-- Cookie session: HttpOnly + SameSite, Secure saat HTTPS/konfigurasi.
-- Tidak ada query concat dari user input (gunakan prepared statement/binding).
+- CSRF aktif pada semua route `web`.
+- Cookie session: HttpOnly + SameSite Lax, Secure saat HTTPS.
+- Semua query menggunakan prepared statement / binding — tidak ada query concat dari input user.
+- Upload file disimpan di `storage/filemanager/{module}/{role}/{user_id}/` dengan nama acak + MIME whitelist.
 
 ## Tests
 
@@ -177,19 +193,9 @@ End user tidak perlu menjalankan `npm install`.
 composer test
 ```
 
-Coverage minimal awal:
+## Safe Upgrade Policy
 
-- router happy path
-- view escaping
-- csrf token + blocking request invalid
-
-## Donasi
-
-### Donasi & Beli Kopi
-
-Kalau AitiGo ngebantu kerjaanmu dan bikin hidup sedikit lebih waras,
-boleh traktir kopi biar maintainer kuat begadang.
-
-- [☕(saweria)](https://saweria.co/aitisolutions)
-- [☕(Buymeacoffee)](https://buymeacoffee.com/aitisolutions)
-- QRIS tersedia (Hubungi saya)
+- Framework core (`system/`, `bootstrap/`, `public/`, root tooling) boleh di-update otomatis.
+- User app (`app/`, `routes/`, `database/`) tidak pernah di-overwrite oleh updater.
+- Setiap update wajib backup `*.bak.YmdHis` sebelum menyentuh file.
+- SemVer wajib: PATCH = bugfix, MINOR = fitur baru, MAJOR = breaking change + migration guide.
