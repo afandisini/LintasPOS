@@ -780,7 +780,7 @@ if (!function_exists('render_file_cell')) {
 
 if (!function_exists('menu_generator_sidebar_items')) {
     /**
-     * @return array<int, array{module_name: string, menu_title: string, menu_icon: string, route_prefix: string, parent_menu_key: string}>
+     * @return array<int, array{module_name: string, module_slug: string, menu_title: string, menu_icon: string, route_prefix: string, parent_menu_key: string, menu_order: int}>
      */
     function menu_generator_sidebar_items(): array
     {
@@ -792,12 +792,22 @@ if (!function_exists('menu_generator_sidebar_items')) {
         $cached = [];
         try {
             $pdo = Database::connection();
-            $stmt = $pdo->query(
-                'SELECT module_name, menu_title, menu_icon, route_prefix, parent_menu_key '
+            $manualSlugs = [
+                'transaksi',
+                'transaksi-penjualan',
+                'transaksi-pembelian',
+                'keuangan',
+                'keuangan-input',
+                'laporan',
+            ];
+            $slugPlaceholders = implode(', ', array_fill(0, count($manualSlugs), '?'));
+            $stmt = $pdo->prepare(
+                'SELECT id, module_name, module_slug, menu_title, menu_icon, route_prefix, parent_menu_key, menu_order '
                 . 'FROM menu_generator '
-                . 'WHERE deleted_at IS NULL AND status = \'generated\' '
+                . 'WHERE deleted_at IS NULL AND (status = \'generated\' OR module_slug IN (' . $slugPlaceholders . ')) '
                 . 'ORDER BY menu_order ASC, id ASC'
             );
+            $stmt->execute($manualSlugs);
             $rows = $stmt->fetchAll();
             if (!is_array($rows)) {
                 return $cached;
@@ -813,11 +823,16 @@ if (!function_exists('menu_generator_sidebar_items')) {
                 }
 
                 $moduleName = trim((string) ($row['module_name'] ?? ''));
+                $moduleSlug = trim((string) ($row['module_slug'] ?? ''));
                 $menuTitle = trim((string) ($row['menu_title'] ?? ''));
                 $menuIcon = trim((string) ($row['menu_icon'] ?? 'bi bi-grid-3x3-gap-fill'));
                 $parentMenuKey = trim((string) ($row['parent_menu_key'] ?? ''));
+                $menuOrder = (int) ($row['menu_order'] ?? 0);
                 if ($moduleName === '') {
                     $moduleName = ucwords(str_replace(['_', '-'], ' ', $routePrefix));
+                }
+                if ($moduleSlug === '') {
+                    $moduleSlug = strtolower(str_replace('/', '-', $routePrefix));
                 }
                 if ($menuTitle === '') {
                     $menuTitle = $moduleName;
@@ -831,10 +846,12 @@ if (!function_exists('menu_generator_sidebar_items')) {
 
                 $cached[] = [
                     'module_name' => $moduleName,
+                    'module_slug' => $moduleSlug,
                     'menu_title' => $menuTitle,
                     'menu_icon' => $menuIcon,
                     'route_prefix' => $routePrefix,
                     'parent_menu_key' => strtolower(substr($parentMenuKey, 0, 150)),
+                    'menu_order' => $menuOrder,
                 ];
             }
         } catch (\Throwable) {

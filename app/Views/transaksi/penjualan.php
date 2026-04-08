@@ -13,6 +13,7 @@
 /** @var array<string,int> $summary */
 /** @var array<int,string> $paymentMethods */
 /** @var int $activeHoldId */
+/** @var array<string,mixed> $lastReceipt */
 
 $mediaUrl = static function ($rawPath): string {
     $path = trim((string) $rawPath);
@@ -63,247 +64,267 @@ if ((int) ($activeHoldId ?? 0) > 0) {
         </div>
     </div>
 
-    <div id="holdSection">
-        <?php if ($holdRows !== []): ?>
-            <section class="anim mb-3">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="bi bi-pause-circle" style="color:var(--accent);font-size:15px;"></i>
-                    <span style="font-size:13px;font-weight:700;color:var(--text-primary);">Transaksi Ditahan</span>
-                    <span class="sbadge wrn"><?= count($holdRows) ?></span>
-                </div>
-                <div class="hold-scroll">
-                    <?php foreach ($holdRows as $row): ?>
-                        <?php if (!is_array($row)) {
-                            continue;
-                        } ?>
-                        <div class="hold-card" data-hold-id="<?= e((string) ($row['id'] ?? '0')) ?>" data-hold-code="<?= e((string) ($row['hold_code'] ?? '-')) ?>" onclick="openResumeHoldModal(this)">
-                            <div class="hold-card-top">
-                                <span class="hold-card-code"><?= e((string) ($row['hold_code'] ?? '-')) ?></span>
-                                <div class="hold-card-tools">
-                                    <?php if (!empty($row['payment_method'])): ?>
-                                        <span class="sbadge inf" style="font-size:10px;padding:3px 6px;"><?= e((string) $row['payment_method']) ?></span>
-                                    <?php endif; ?>
-                                    <button type="button" class="hold-card-close" title="Hapus hold" onclick="event.stopPropagation(); posDeleteHold(<?= e((string) ($row['id'] ?? '0')) ?>, this);">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <?php if (!empty($row['catatan'])): ?>
-                                <div class="hold-card-note"><?= e((string) $row['catatan']) ?></div>
-                            <?php endif; ?>
-                            <div class="hold-card-bottom">
-                                <span class="hold-card-time"><i class="bi bi-clock"></i> <?= e((string) ($row['created_at'] ?? '-')) ?></span>
-                                <span class="hold-card-action"><i class="bi bi-play-fill"></i> Lanjutkan</span>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </section>
-        <?php endif; ?>
+    <div class="keu-tab-wrap mb-3 anim">
+        <a class="keu-tab-link is-active" href="#" data-sales-tab="transaksi"><i class="bi bi-cart-check"></i><span>Transaksi</span></a>
+        <a class="keu-tab-link" href="#" data-sales-tab="history"><i class="bi bi-clock-history"></i><span>History</span></a>
     </div>
 
-    <div class="pos-grid anim" id="posMain">
-        <div class="pos-cart">
-            <div class="panel pos-cart-panel">
-                <div class="panel-head">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="panel-title"><i class="bi bi-cart3"></i> Keranjang Aktif</span>
-                        <span id="transactionModeBadge"
-                            class="sbadge <?= (int) ($activeHoldId ?? 0) > 0 ? 'inf' : 'scc' ?>"
-                            data-mode="<?= (int) ($activeHoldId ?? 0) > 0 ? 'hold' : 'new' ?>">
-                            <?= (int) ($activeHoldId ?? 0) > 0 ? e('Hold: ' . ($activeHoldCode !== '' ? $activeHoldCode : ('#' . (string) ((int) $activeHoldId)))) : 'Transaksi Baru' ?>
-                        </span>
+    <div data-sales-pane="transaksi">
+        <div id="holdSection">
+            <?php if ($holdRows !== []): ?>
+                <section class="anim mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-pause-circle" style="color:var(--accent);font-size:15px;"></i>
+                        <span style="font-size:13px;font-weight:700;color:var(--text-primary);">Transaksi Ditahan</span>
+                        <span class="sbadge wrn"><?= count($holdRows) ?></span>
                     </div>
-                    <form method="post" action="/transaksi/penjualan/cart/clear" data-pos-ajax data-pos-msg="Keranjang dikosongkan">
-                        <?= raw(csrf_field()) ?>
-                        <button type="submit" class="btn-g btn-sm"><i class="bi bi-trash3"></i> Kosongkan</button>
-                    </form>
-                </div>
-                <div class="panel-body pos-cart-body" style="padding:0;">
-                    <div class="table-responsive" style="overflow-x:visible;">
-                        <table class="dtable w-100" style="table-layout:fixed;">
-                            <thead>
-                                <tr>
-                                    <th style="width:auto;">Item</th>
-                                    <th style="width:105px;text-align:right;">Harga</th>
-                                    <th style="width:80px;text-align:center;">Qty</th>
-                                    <th style="width:115px;text-align:right;">Total</th>
-                                    <th style="width:42px;"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="cartTableBody">
-                                <?php if ($cartItems === []): ?>
+                    <div class="hold-scroll">
+                        <?php foreach ($holdRows as $row): ?>
+                            <?php if (!is_array($row)) {
+                                continue;
+                            } ?>
+                            <div class="hold-card" data-hold-id="<?= e((string) ($row['id'] ?? '0')) ?>" data-hold-code="<?= e((string) ($row['hold_code'] ?? '-')) ?>" onclick="openResumeHoldModal(this)">
+                                <div class="hold-card-top">
+                                    <span class="hold-card-code"><?= e((string) ($row['hold_code'] ?? '-')) ?></span>
+                                    <div class="hold-card-tools">
+                                        <?php if (!empty($row['payment_method'])): ?>
+                                            <span class="sbadge inf" style="font-size:10px;padding:3px 6px;"><?= e((string) $row['payment_method']) ?></span>
+                                        <?php endif; ?>
+                                        <button type="button" class="hold-card-close" title="Hapus hold" onclick="event.stopPropagation(); posDeleteHold(<?= e((string) ($row['id'] ?? '0')) ?>, this);">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <?php if (!empty($row['catatan'])): ?>
+                                    <div class="hold-card-note"><?= e((string) $row['catatan']) ?></div>
+                                <?php endif; ?>
+                                <div class="hold-card-bottom">
+                                    <span class="hold-card-time"><i class="bi bi-clock"></i> <?= e((string) ($row['created_at'] ?? '-')) ?></span>
+                                    <span class="hold-card-action"><i class="bi bi-play-fill"></i> Lanjutkan</span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+            <?php endif; ?>
+        </div>
+
+        <div class="pos-grid anim" id="posMain">
+            <div class="pos-cart">
+                <div class="panel pos-cart-panel">
+                    <div class="panel-head">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="panel-title"><i class="bi bi-cart3"></i> Keranjang Aktif</span>
+                            <span id="transactionModeBadge"
+                                class="sbadge <?= (int) ($activeHoldId ?? 0) > 0 ? 'inf' : 'scc' ?>"
+                                data-mode="<?= (int) ($activeHoldId ?? 0) > 0 ? 'hold' : 'new' ?>">
+                                <?= (int) ($activeHoldId ?? 0) > 0 ? e('Hold: ' . ($activeHoldCode !== '' ? $activeHoldCode : ('#' . (string) ((int) $activeHoldId)))) : 'Transaksi Baru' ?>
+                            </span>
+                        </div>
+                        <form method="post" action="/transaksi/penjualan/cart/clear" data-pos-ajax data-pos-msg="Keranjang dikosongkan">
+                            <?= raw(csrf_field()) ?>
+                            <button type="submit" class="btn-g btn-sm"><i class="bi bi-trash3"></i> Kosongkan</button>
+                        </form>
+                    </div>
+                    <div class="panel-body pos-cart-body" style="padding:0;">
+                        <div class="table-responsive" style="overflow-x:visible;">
+                            <table class="dtable w-100" style="table-layout:fixed;">
+                                <thead>
                                     <tr>
-                                        <td colspan="5" class="pos-empty-cell">
-                                            <div class="pos-empty-state">
-                                                <i class="bi bi-cart-x"></i>
-                                                <p>Keranjang masih kosong</p>
-                                                <p class="pos-empty-hint">Pilih barang atau jasa untuk memulai transaksi</p>
-                                            </div>
-                                        </td>
+                                        <th style="width:auto;">Item</th>
+                                        <th style="width:105px;text-align:right;">Harga</th>
+                                        <th style="width:80px;text-align:center;">Qty</th>
+                                        <th style="width:115px;text-align:right;">Total</th>
+                                        <th style="width:42px;"></th>
                                     </tr>
-                                <?php else: ?>
-                                    <?php foreach ($cartItems as $idx => $item): ?>
-                                        <?php if (!is_array($item)) {
-                                            continue;
-                                        } ?>
-                                        <?php
-                                        $qty = max(1, (int) ((string) ($item['jumlah'] ?? '1')));
-                                        $harga = max(0, (int) ((string) ($item['jual'] ?? '0')));
-                                        $diskon = max(0, (int) ((string) ($item['diskon'] ?? '0')));
-                                        $lineTotal = max(0, ($harga - $diskon) * $qty);
-                                        $itemType = (string) ($item['item_type'] ?? 'barang');
-                                        ?>
-                                        <tr class="pos-cart-row" data-cart-id="<?= e((string) ($item['id'] ?? '0')) ?>">
-                                            <td>
-                                                <div class="pos-item-info">
-                                                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                                                        <span class="sbadge <?= $itemType === 'jasa' ? 'inf' : 'wrn' ?>"><?= e(ucfirst($itemType)) ?></span>
-                                                        <span class="pos-item-name"><?= e((string) ($item['nama_barang'] ?? '-')) ?></span>
-                                                    </div>
-                                                    <?php if ($diskon > 0): ?>
-                                                        <span class="pos-item-disc"><i class="bi bi-tag"></i> Disc: <?= e(format_currency_id($diskon)) ?>/item</span>
-                                                    <?php endif; ?>
+                                </thead>
+                                <tbody id="cartTableBody">
+                                    <?php if ($cartItems === []): ?>
+                                        <tr>
+                                            <td colspan="5" class="pos-empty-cell">
+                                                <div class="pos-empty-state">
+                                                    <i class="bi bi-cart-x"></i>
+                                                    <p>Keranjang masih kosong</p>
+                                                    <p class="pos-empty-hint">Pilih barang atau jasa untuk memulai transaksi</p>
                                                 </div>
                                             </td>
-                                            <td style="text-align:right;font-size:13px;color:var(--text-secondary);"><?= e(format_currency_id($harga)) ?></td>
-                                            <td style="text-align:center;">
-                                                <form method="post" action="/transaksi/penjualan/cart/update" class="pos-qty-form">
-                                                    <?= raw(csrf_field()) ?>
-                                                    <input type="hidden" name="cart_id" value="<?= e((string) ($item['id'] ?? '0')) ?>">
-                                                    <input class="fi pos-qty-input" type="number" name="qty" min="0" value="<?= e((string) $qty) ?>" required>
-                                                </form>
-                                            </td>
-                                            <td style="text-align:right;font-weight:700;font-size:13px;"><?= e(format_currency_id($lineTotal)) ?></td>
-                                            <td>
-                                                <form method="post" action="/transaksi/penjualan/cart/remove" data-pos-ajax data-pos-msg="Item dihapus dari keranjang">
-                                                    <?= raw(csrf_field()) ?>
-                                                    <input type="hidden" name="cart_id" value="<?= e((string) ($item['id'] ?? '0')) ?>">
-                                                    <button type="submit" class="pos-del-btn" title="Hapus item"><i class="bi bi-x-lg"></i></button>
-                                                </form>
-                                            </td>
                                         </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="pos-cart-summary" id="cartSummary">
-                    <div class="pos-summary-row">
-                        <span>Total Qty</span>
-                        <span id="summaryQty"><?= e((string) ((int) ((string) ($summary['qty'] ?? '0')))) ?></span>
-                    </div>
-                    <div class="pos-summary-row">
-                        <span>Subtotal</span>
-                        <span id="summarySubtotal"><?= e(format_currency_id((int) ((string) ($summary['subtotal'] ?? '0')))) ?></span>
-                    </div>
-                    <div class="pos-summary-row">
-                        <span>Diskon</span>
-                        <span id="summaryDiskon" style="color:var(--danger);"><?= e(format_currency_id((int) ((string) ($summary['diskon'] ?? '0')))) ?></span>
-                    </div>
-                    <div class="pos-summary-row grand">
-                        <span>Grand Total</span>
-                        <span id="summaryGrandTotal" data-value="<?= e((string) ((int) ((string) ($summary['grand_total'] ?? '0')))) ?>"><?= e(format_currency_id((int) ((string) ($summary['grand_total'] ?? '0')))) ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="pos-actions">
-            <div class="pos-tabs">
-                <button class="pos-tab active" data-tab="barang" onclick="switchTab('barang')">
-                    <i class="bi bi-box-seam"></i> Item
-                </button>
-                <button class="pos-tab" data-tab="checkout" onclick="switchTab('checkout')">
-                    <i class="bi bi-credit-card"></i> Bayar
-                </button>
-            </div>
-
-            <div class="panel p-3 pos-tab-panel active" id="tabBarang">
-                <form method="post" action="/transaksi/penjualan/cart/add" data-pos-ajax data-pos-msg="Barang ditambahkan ke keranjang">
-                    <?= raw(csrf_field()) ?>
-                    <input type="hidden" name="item_type" value="barang">
-                    <div class="fg">
-                        <label class="fl" for="selBarang">Pilih item</label>
-                        <div class="d-flex align-items-center justify-content-center gap-2">
-                            <button type="button" class="btn-a" data-cm-open="cmAddBarang">
-                                <i class="bi bi-plus-circle"></i><span>Tambah <?= e($barang ?? 'Barang') ?></span>
-                            </button>
-                            <button type="button" class="btn-g" data-cm-open="cmAddJasa">
-                                <i class="bi bi-plus-circle me-1"></i><span>Tambah <?= e($jasa ?? 'Jasa') ?></span>
-                            </button>
+                                    <?php else: ?>
+                                        <?php foreach ($cartItems as $idx => $item): ?>
+                                            <?php if (!is_array($item)) {
+                                                continue;
+                                            } ?>
+                                            <?php
+                                            $qty = max(1, (int) ((string) ($item['jumlah'] ?? '1')));
+                                            $harga = max(0, (int) ((string) ($item['jual'] ?? '0')));
+                                            $diskon = max(0, (int) ((string) ($item['diskon'] ?? '0')));
+                                            $lineTotal = max(0, ($harga - $diskon) * $qty);
+                                            $itemType = (string) ($item['item_type'] ?? 'barang');
+                                            ?>
+                                            <tr class="pos-cart-row" data-cart-id="<?= e((string) ($item['id'] ?? '0')) ?>">
+                                                <td>
+                                                    <div class="pos-item-info">
+                                                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                                            <span class="sbadge <?= $itemType === 'jasa' ? 'inf' : 'wrn' ?>"><?= e(ucfirst($itemType)) ?></span>
+                                                            <span class="pos-item-name"><?= e((string) ($item['nama_barang'] ?? '-')) ?></span>
+                                                        </div>
+                                                        <?php if ($diskon > 0): ?>
+                                                            <span class="pos-item-disc"><i class="bi bi-tag"></i> Disc: <?= e(format_currency_id($diskon)) ?>/item</span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </td>
+                                                <td style="text-align:right;font-size:13px;color:var(--text-secondary);"><?= e(format_currency_id($harga)) ?></td>
+                                                <td style="text-align:center;">
+                                                    <form method="post" action="/transaksi/penjualan/cart/update" class="pos-qty-form">
+                                                        <?= raw(csrf_field()) ?>
+                                                        <input type="hidden" name="cart_id" value="<?= e((string) ($item['id'] ?? '0')) ?>">
+                                                        <input class="fi pos-qty-input" type="number" name="qty" min="0" value="<?= e((string) $qty) ?>" required>
+                                                    </form>
+                                                </td>
+                                                <td style="text-align:right;font-weight:700;font-size:13px;"><?= e(format_currency_id($lineTotal)) ?></td>
+                                                <td>
+                                                    <form method="post" action="/transaksi/penjualan/cart/remove" data-pos-ajax data-pos-msg="Item dihapus dari keranjang">
+                                                        <?= raw(csrf_field()) ?>
+                                                        <input type="hidden" name="cart_id" value="<?= e((string) ($item['id'] ?? '0')) ?>">
+                                                        <button type="submit" class="pos-del-btn" title="Hapus item"><i class="bi bi-x-lg"></i></button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    <div class="sb-midline anim" aria-hidden="true">
-                        <span class="sb-midline-bar"></span>
-                        <span class="sb-midline-text">Produk yang Sering Dibeli</span>
-                        <span class="sb-midline-bar"></span>
+                    <div class="pos-cart-summary" id="cartSummary">
+                        <div class="pos-summary-row">
+                            <span>Total Qty</span>
+                            <span id="summaryQty"><?= e((string) ((int) ((string) ($summary['qty'] ?? '0')))) ?></span>
+                        </div>
+                        <div class="pos-summary-row">
+                            <span>Subtotal</span>
+                            <span id="summarySubtotal"><?= e(format_currency_id((int) ((string) ($summary['subtotal'] ?? '0')))) ?></span>
+                        </div>
+                        <div class="pos-summary-row">
+                            <span>Diskon</span>
+                            <span id="summaryDiskon" style="color:var(--danger);"><?= e(format_currency_id((int) ((string) ($summary['diskon'] ?? '0')))) ?></span>
+                        </div>
+                        <div class="pos-summary-row grand">
+                            <span>Grand Total</span>
+                            <span id="summaryGrandTotal" data-value="<?= e((string) ((int) ((string) ($summary['grand_total'] ?? '0')))) ?>"><?= e(format_currency_id((int) ((string) ($summary['grand_total'] ?? '0')))) ?></span>
+                        </div>
                     </div>
-                    <div class="pos-add-hint small"><i class="bi bi-info-circle"></i> Pilih Barang/Jasa</div>
-                </form>
+                </div>
             </div>
 
-            <div class="panel p-3 pos-tab-panel" id="tabCheckout">
-                <div class="pos-checkout-total">
-                    <div class="pos-checkout-total-label">Total Pembayaran</div>
-                    <div class="pos-checkout-total-value" id="checkoutDisplayTotal"><?= e(format_currency_id((int) ((string) ($summary['grand_total'] ?? '0')))) ?></div>
+            <div class="pos-actions">
+                <div class="pos-tabs">
+                    <button class="pos-tab active" data-tab="barang" onclick="switchTab('barang')">
+                        <i class="bi bi-box-seam"></i> Item
+                    </button>
+                    <button class="pos-tab" data-tab="checkout" onclick="switchTab('checkout')">
+                        <i class="bi bi-credit-card"></i> Bayar
+                    </button>
                 </div>
-                <form method="post" action="/transaksi/penjualan/checkout" data-pos-checkout id="formCheckout">
-                    <?= raw(csrf_field()) ?>
-                    <input type="hidden" id="activeHoldIdInput" name="active_hold_id" value="<?= e((string) ((int) ($activeHoldId ?? 0))) ?>" data-hold-code="<?= e($activeHoldCode) ?>">
-                    <div class="fg">
-                        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                            <label class="fl" for="checkoutPelanggan" style="margin-bottom:0;">Pelanggan</label>
-                            <a href="javascript:void(0)" class="hold-card-action" data-cm-open="cmQuickPelanggan">
-                                <i class="bi bi-plus me-1"></i>Tambah Pelanggan
-                            </a>
+
+                <div class="panel p-3 pos-tab-panel active" id="tabBarang">
+                    <form method="post" action="/transaksi/penjualan/cart/add" data-pos-ajax data-pos-msg="Barang ditambahkan ke keranjang">
+                        <?= raw(csrf_field()) ?>
+                        <input type="hidden" name="item_type" value="barang">
+                        <div class="fg">
+                            <label class="fl" for="selBarang">Pilih item</label>
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <button type="button" class="btn-a" data-cm-open="cmAddBarang">
+                                    <i class="bi bi-plus-circle"></i><span>Tambah <?= e($barang ?? 'Barang') ?></span>
+                                </button>
+                                <button type="button" class="btn-g" data-cm-open="cmAddJasa">
+                                    <i class="bi bi-plus-circle me-1"></i><span>Tambah <?= e($jasa ?? 'Jasa') ?></span>
+                                </button>
+                            </div>
                         </div>
-                        <select class="fi" id="checkoutPelanggan" name="id_pelanggan">
-                            <option value="0">Umum / Non Member</option>
-                            <?php foreach ($pelangganOptions as $item): ?>
-                                <?php if (!is_array($item)) {
-                                    continue;
-                                } ?>
-                                <option value="<?= e((string) ($item['id'] ?? '0')) ?>">
-                                    <?= e((string) ($item['nama_pelanggan'] ?? '-')) ?> (<?= e((string) ($item['kode_pelanggan'] ?? '-')) ?>)
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="fg">
-                        <label class="fl" for="checkoutMethod">Metode Pembayaran</label>
-                        <select class="fi" id="checkoutMethod" name="payment_method" required>
-                            <option value="">— Pilih Metode —</option>
-                            <?php foreach ($paymentMethods as $method): ?>
-                                <option value="<?= e((string) $method) ?>"><?= e((string) $method) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="fg">
-                        <label class="fl" for="checkoutBayar">Nominal Bayar</label>
-                        <input class="fi" id="checkoutBayar" type="number" min="1" name="bayar" value="<?= e((string) ((int) ((string) ($summary['grand_total'] ?? '0')))) ?>" required placeholder="Masukkan nominal" style="font-size:15px;font-weight:700;">
-                    </div>
-                    <div id="kembalianBox" class="pos-kembalian-row pos-nol" style="display:none;">
-                        <span>Kembalian</span>
-                        <span id="kembalianValue">Rp 0</span>
-                    </div>
-                    <div class="fg">
-                        <label class="fl" for="checkoutKeterangan">Keterangan</label>
-                        <input class="fi" id="checkoutKeterangan" type="text" name="keterangan" placeholder="Catatan transaksi (opsional)">
-                    </div>
+                        <div class="sb-midline anim" aria-hidden="true">
+                            <span class="sb-midline-bar"></span>
+                            <span class="sb-midline-text">Produk yang Sering Dibeli</span>
+                            <span class="sb-midline-bar"></span>
+                        </div>
+                        <div class="pos-add-hint small"><i class="bi bi-info-circle"></i> Pilih Barang/Jasa</div>
+                    </form>
+                </div>
 
-                    <div class="pos-btn-row">
-                        <button type="submit" class="btn-a" data-pos-checkout-btn><i class="bi bi-check2-circle"></i> Proses Checkout</button>
+                <div class="panel p-3 pos-tab-panel" id="tabCheckout">
+                    <div class="pos-checkout-total">
+                        <div class="pos-checkout-total-label">Total Pembayaran</div>
+                        <div class="pos-checkout-total-value" id="checkoutDisplayTotal"><?= e(format_currency_id((int) ((string) ($summary['grand_total'] ?? '0')))) ?></div>
                     </div>
-                </form>
+                    <form method="post" action="/transaksi/penjualan/checkout" data-pos-checkout id="formCheckout">
+                        <?= raw(csrf_field()) ?>
+                        <input type="hidden" id="activeHoldIdInput" name="active_hold_id" value="<?= e((string) ((int) ($activeHoldId ?? 0))) ?>" data-hold-code="<?= e($activeHoldCode) ?>">
+                        <div class="fg">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                <label class="fl" for="checkoutPelanggan" style="margin-bottom:0;">Pelanggan</label>
+                                <a href="javascript:void(0)" class="hold-card-action" data-cm-open="cmQuickPelanggan">
+                                    <i class="bi bi-plus me-1"></i>Tambah Pelanggan
+                                </a>
+                            </div>
+                            <select class="fi" id="checkoutPelanggan" name="id_pelanggan">
+                                <option value="0">Umum / Non Member</option>
+                                <?php foreach ($pelangganOptions as $item): ?>
+                                    <?php if (!is_array($item)) {
+                                        continue;
+                                    } ?>
+                                    <option value="<?= e((string) ($item['id'] ?? '0')) ?>">
+                                        <?= e((string) ($item['nama_pelanggan'] ?? '-')) ?> (<?= e((string) ($item['kode_pelanggan'] ?? '-')) ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label class="fl" for="checkoutMethod">Metode Pembayaran</label>
+                            <select class="fi" id="checkoutMethod" name="payment_method" required>
+                                <option value="">— Pilih Metode —</option>
+                                <?php foreach ($paymentMethods as $method): ?>
+                                    <option value="<?= e((string) $method) ?>"><?= e((string) $method) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label class="fl" for="checkoutBayar">Nominal Bayar</label>
+                            <input class="fi" id="checkoutBayar" type="number" min="1" name="bayar" value="<?= e((string) ((int) ((string) ($summary['grand_total'] ?? '0')))) ?>" required placeholder="Masukkan nominal" style="font-size:15px;font-weight:700;">
+                        </div>
+                        <div id="kembalianBox" class="pos-kembalian-row pos-nol" style="display:none;">
+                            <span>Kembalian</span>
+                            <span id="kembalianValue">Rp 0</span>
+                        </div>
+                        <div class="fg">
+                            <label class="fl" for="checkoutKeterangan">Keterangan</label>
+                            <input class="fi" id="checkoutKeterangan" type="text" name="keterangan" placeholder="Catatan transaksi (opsional)">
+                        </div>
 
-                <button type="button" class="pos-btn-hold" onclick="openHoldModal()">
-                    <i class="bi bi-pause-circle"></i> Tahan Transaksi Ini
-                </button>
+                        <div class="pos-btn-row">
+                            <button type="submit" class="btn-a" data-pos-checkout-btn><i class="bi bi-check2-circle"></i> Proses Checkout</button>
+                        </div>
+                    </form>
+
+                    <button type="button" class="pos-btn-hold" onclick="openHoldModal()">
+                        <i class="bi bi-pause-circle"></i> Tahan Transaksi Ini
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="panel anim" data-sales-pane="history" style="display:none;">
+        <div class="panel-head">
+            <span class="panel-title"><i class="bi bi-clock-history"></i> Histori Penjualan Harian</span>
+            <button type="button" class="btn-g btn-sm" data-sales-history-refresh><i class="bi bi-arrow-repeat"></i> Refresh</button>
+        </div>
+        <div class="panel-body">
+            <div class="small text-muted mb-2">Menampilkan riwayat transaksi penjualan per hari.</div>
+            <div id="salesHistoryContainer">
+                <div class="text-muted small">Memuat histori...</div>
             </div>
         </div>
-
     </div>
 
     <div class="cm-bg" id="resumeHoldModal" data-cm-bg>
@@ -425,77 +446,17 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                         </button>
                     </div>
                 </div>
-                <section class="pos-frequent-block">
-                    <div class="sb-midline" aria-hidden="true">
-                        <span class="sb-midline-bar"></span>
-                        <span class="sb-midline-text">Produk yang Sering Dibeli</span>
-                        <span class="sb-midline-bar"></span>
-                    </div>
-                    <div class="pos-frequent-row">
-                        <div class="pos-frequent-label">Barang</div>
-                        <div class="pos-frequent-scroll">
-                            <?php foreach ($frequentBarangOptions as $freq): ?>
-                                <?php if (!is_array($freq)) {
-                                    continue;
-                                } ?>
-                                <?php
-                                $freqId = max(0, (int) ($freq['id'] ?? 0));
-                                if ($freqId <= 0) {
-                                    continue;
-                                }
-                                $freqName = (string) ($freq['nama_barang'] ?? '-');
-                                $freqCode = (string) ($freq['id_barang'] ?? '-');
-                                $freqPrice = max(0, (int) ($freq['harga_jual'] ?? 0));
-                                $freqImage = $mediaUrl($freq['gambar_path'] ?? $freq['gambar'] ?? '');
-                                ?>
-                                <button type="button" class="pos-frequent-item" data-quick-pick data-item-type="barang" data-item-id="<?= e((string) $freqId) ?>">
-                                    <span class="pos-frequent-image">
-                                        <?php if ($freqImage !== ''): ?>
-                                            <img src="<?= e($freqImage) ?>" alt="<?= e($freqName) ?>" loading="lazy">
-                                        <?php else: ?>
-                                            <i class="bi bi-box-seam"></i>
-                                        <?php endif; ?>
-                                    </span>
-                                    <span class="pos-frequent-name"><?= e($freqName) ?></span>
-                                    <span class="pos-frequent-code"><?= e($freqCode) ?></span>
-                                    <span class="pos-frequent-price"><?= e(format_currency_id($freqPrice)) ?></span>
-                                </button>
-                            <?php endforeach; ?>
+                <div class="pos-pick-search mb-2" data-pick-search-wrap>
+                    <label class="fl pos-pick-label" style="margin-bottom:6px;">Pencarian Produk</label>
+                    <div class="pos-pick-search-box" data-pick-search-box>
+                        <i class="bi bi-search pos-pick-search-icon" data-pick-search-icon aria-hidden="true"></i>
+                        <div class="pos-pick-search-loading" data-pick-loading style="display:none;">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Memuat...</span>
                         </div>
+                        <input type="text" class="fi pos-pick-search-input" data-pick-search placeholder="Cari nama / kode produk..." autocomplete="off">
                     </div>
-                    <div class="pos-frequent-row">
-                        <div class="pos-frequent-label">Jasa</div>
-                        <div class="pos-frequent-scroll">
-                            <?php foreach ($frequentJasaOptions as $freq): ?>
-                                <?php if (!is_array($freq)) {
-                                    continue;
-                                } ?>
-                                <?php
-                                $freqId = max(0, (int) ($freq['id'] ?? 0));
-                                if ($freqId <= 0) {
-                                    continue;
-                                }
-                                $freqName = (string) ($freq['nama'] ?? '-');
-                                $freqCode = (string) ($freq['id_jasa'] ?? '-');
-                                $freqPrice = max(0, (int) ($freq['harga'] ?? 0));
-                                $freqImage = $mediaUrl($freq['gambar_path'] ?? $freq['gambar_img'] ?? '');
-                                ?>
-                                <button type="button" class="pos-frequent-item" data-quick-pick data-item-type="jasa" data-item-id="<?= e((string) $freqId) ?>">
-                                    <span class="pos-frequent-image">
-                                        <?php if ($freqImage !== ''): ?>
-                                            <img src="<?= e($freqImage) ?>" alt="<?= e($freqName) ?>" loading="lazy">
-                                        <?php else: ?>
-                                            <i class="bi bi-tools"></i>
-                                        <?php endif; ?>
-                                    </span>
-                                    <span class="pos-frequent-name"><?= e($freqName) ?></span>
-                                    <span class="pos-frequent-code"><?= e($freqCode) ?></span>
-                                    <span class="pos-frequent-price"><?= e(format_currency_id($freqPrice)) ?></span>
-                                </button>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </section>
+                </div>
                 <div class="pos-pick-items pos-pick-grid" data-pick-items>
                     <?php foreach ($barangOptions as $item): ?>
                         <?php if (!is_array($item)) {
@@ -514,7 +475,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                         $itemDiskon = max(0, (int) ($item['diskon_aktif'] ?? 0));
                         $itemPriceAfter = max(0, (int) ($item['harga_jual_diskon'] ?? $itemPrice));
                         ?>
-                        <article class="pos-pick-card" data-pick-item data-item-type="barang" data-item-id="<?= e((string) $itemId) ?>">
+                        <article class="pos-pick-card" data-pick-item data-item-type="barang" data-item-id="<?= e((string) $itemId) ?>" data-pick-keywords="<?= e(strtolower(trim($itemName . ' ' . $itemCode))) ?>">
                             <label class="pos-pick-select">
                                 <input type="checkbox" class="pos-pick-check" data-pick-check <?= $itemStock > 0 ? '' : 'disabled' ?>>
                                 <span>Pilih</span>
@@ -579,77 +540,17 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                         </button>
                     </div>
                 </div>
-                <section class="pos-frequent-block">
-                    <div class="sb-midline" aria-hidden="true">
-                        <span class="sb-midline-bar"></span>
-                        <span class="sb-midline-text">Produk yang Sering Dibeli</span>
-                        <span class="sb-midline-bar"></span>
-                    </div>
-                    <div class="pos-frequent-row">
-                        <div class="pos-frequent-label">Barang</div>
-                        <div class="pos-frequent-scroll">
-                            <?php foreach ($frequentBarangOptions as $freq): ?>
-                                <?php if (!is_array($freq)) {
-                                    continue;
-                                } ?>
-                                <?php
-                                $freqId = max(0, (int) ($freq['id'] ?? 0));
-                                if ($freqId <= 0) {
-                                    continue;
-                                }
-                                $freqName = (string) ($freq['nama_barang'] ?? '-');
-                                $freqCode = (string) ($freq['id_barang'] ?? '-');
-                                $freqPrice = max(0, (int) ($freq['harga_jual'] ?? 0));
-                                $freqImage = $mediaUrl($freq['gambar_path'] ?? $freq['gambar'] ?? '');
-                                ?>
-                                <button type="button" class="pos-frequent-item" data-quick-pick data-item-type="barang" data-item-id="<?= e((string) $freqId) ?>">
-                                    <span class="pos-frequent-image">
-                                        <?php if ($freqImage !== ''): ?>
-                                            <img src="<?= e($freqImage) ?>" alt="<?= e($freqName) ?>" loading="lazy">
-                                        <?php else: ?>
-                                            <i class="bi bi-box-seam"></i>
-                                        <?php endif; ?>
-                                    </span>
-                                    <span class="pos-frequent-name"><?= e($freqName) ?></span>
-                                    <span class="pos-frequent-code"><?= e($freqCode) ?></span>
-                                    <span class="pos-frequent-price"><?= e(format_currency_id($freqPrice)) ?></span>
-                                </button>
-                            <?php endforeach; ?>
+                <div class="pos-pick-search mb-2" data-pick-search-wrap>
+                    <label class="fl pos-pick-label" style="margin-bottom:6px;">Pencarian Produk</label>
+                    <div class="pos-pick-search-box" data-pick-search-box>
+                        <i class="bi bi-search pos-pick-search-icon" data-pick-search-icon aria-hidden="true"></i>
+                        <div class="pos-pick-search-loading" data-pick-loading style="display:none;">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Memuat...</span>
                         </div>
+                        <input type="text" class="fi pos-pick-search-input" data-pick-search placeholder="Cari nama / kode produk..." autocomplete="off">
                     </div>
-                    <div class="pos-frequent-row">
-                        <div class="pos-frequent-label">Jasa</div>
-                        <div class="pos-frequent-scroll">
-                            <?php foreach ($frequentJasaOptions as $freq): ?>
-                                <?php if (!is_array($freq)) {
-                                    continue;
-                                } ?>
-                                <?php
-                                $freqId = max(0, (int) ($freq['id'] ?? 0));
-                                if ($freqId <= 0) {
-                                    continue;
-                                }
-                                $freqName = (string) ($freq['nama'] ?? '-');
-                                $freqCode = (string) ($freq['id_jasa'] ?? '-');
-                                $freqPrice = max(0, (int) ($freq['harga'] ?? 0));
-                                $freqImage = $mediaUrl($freq['gambar_path'] ?? $freq['gambar_img'] ?? '');
-                                ?>
-                                <button type="button" class="pos-frequent-item" data-quick-pick data-item-type="jasa" data-item-id="<?= e((string) $freqId) ?>">
-                                    <span class="pos-frequent-image">
-                                        <?php if ($freqImage !== ''): ?>
-                                            <img src="<?= e($freqImage) ?>" alt="<?= e($freqName) ?>" loading="lazy">
-                                        <?php else: ?>
-                                            <i class="bi bi-tools"></i>
-                                        <?php endif; ?>
-                                    </span>
-                                    <span class="pos-frequent-name"><?= e($freqName) ?></span>
-                                    <span class="pos-frequent-code"><?= e($freqCode) ?></span>
-                                    <span class="pos-frequent-price"><?= e(format_currency_id($freqPrice)) ?></span>
-                                </button>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </section>
+                </div>
                 <div class="pos-pick-items pos-pick-grid" data-pick-items>
                     <?php foreach ($jasaOptions as $item): ?>
                         <?php if (!is_array($item)) {
@@ -665,7 +566,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                         $itemPrice = max(0, (int) ($item['harga'] ?? 0));
                         $itemImage = $mediaUrl($item['gambar_path'] ?? $item['gambar_img'] ?? '');
                         ?>
-                        <article class="pos-pick-card" data-pick-item data-item-type="jasa" data-item-id="<?= e((string) $itemId) ?>">
+                        <article class="pos-pick-card" data-pick-item data-item-type="jasa" data-item-id="<?= e((string) $itemId) ?>" data-pick-keywords="<?= e(strtolower(trim($itemName . ' ' . $itemCode))) ?>">
                             <label class="pos-pick-select">
                                 <input type="checkbox" class="pos-pick-check" data-pick-check>
                                 <span>Pilih</span>
@@ -699,6 +600,21 @@ if ((int) ($activeHoldId ?? 0) > 0) {
             </div>
         </div>
     </div>
+    <div class="cm-bg" id="cmReceiptPreview" data-cm-bg>
+        <div class="panel cm-box" role="dialog" aria-modal="true" aria-labelledby="cmReceiptPreviewTitle">
+            <div class="panel-head">
+                <span class="panel-title" id="cmReceiptPreviewTitle"><i class="bi bi-receipt-cutoff me-1"></i> Preview Nota Penjualan</span>
+                <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="panel-body" style="padding:10px;">
+                <iframe id="receiptPreviewFrame" title="Preview Nota" style="width:100%;height:65vh;border:1px solid var(--line);border-radius:10px;background:#fff;"></iframe>
+            </div>
+            <div class="cm-foot">
+                <button type="button" class="btn-g" data-cm-close>Batal</button>
+                <button type="button" class="btn-a" data-receipt-print><i class="bi bi-printer"></i> Cetak</button>
+            </div>
+        </div>
+    </div>
 
 </main>
 
@@ -706,14 +622,78 @@ if ((int) ($activeHoldId ?? 0) > 0) {
 <?= raw(helper_toast_script()) ?>
 <?= raw(module_script('Dashboard/js/dashboard.js')) ?>
 <?= raw(view('partials/dashboard/shell_close')) ?>
+<style>
+    .pos-pick-search .pos-pick-search-box {
+        position: relative;
+    }
 
+    .pos-pick-search .pos-pick-search-input {
+        padding-left: 38px;
+    }
+
+    .pos-pick-search .pos-pick-search-icon,
+    .pos-pick-search .pos-pick-search-loading {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+    }
+
+    .pos-pick-search .pos-pick-search-icon {
+        color: var(--text-secondary);
+        font-size: 14px;
+        pointer-events: none;
+    }
+
+    .pos-pick-search .pos-pick-search-loading {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    .pos-pick-search.is-loading .pos-pick-search-icon {
+        display: none;
+    }
+
+    .pos-pick-search.is-loading .pos-pick-search-loading {
+        display: inline-flex !important;
+    }
+
+    .pos-pick-search.is-loading .pos-pick-search-input {
+        padding-left: 112px;
+    }
+</style>
+
+<script>
+    window.posPenjualanConfig = <?= json_encode([
+                                    'lastReceipt' => is_array($lastReceipt ?? null) ? $lastReceipt : [],
+                                ], JSON_UNESCAPED_UNICODE) ?>;
+</script>
+<script type="application/json" id="posLastReceiptData">
+    <?= raw(json_encode(is_array($lastReceipt ?? null) ? $lastReceipt : [], JSON_UNESCAPED_UNICODE)) ?>
+</script>
 <script>
     (function() {
         'use strict';
+        var salesHistoryLoaded = false;
 
         function formatRp(n) {
             n = parseInt(n) || 0;
             return 'Rp ' + n.toLocaleString('id-ID');
+        }
+
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
         /* ===== TOAST — pakai CSS bawaan .toast-wrap .toast-i .toast-icon .toast-msg ===== */
@@ -805,6 +785,125 @@ if ((int) ($activeHoldId ?? 0) > 0) {
             }
         }
 
+        function formatDateLabel(raw) {
+            var txt = String(raw || '').trim();
+            if (!txt) return '-';
+            var d = new Date(txt + 'T00:00:00');
+            if (Number.isNaN(d.getTime())) return txt;
+            return d.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        function formatDateTimeLabel(raw) {
+            var txt = String(raw || '').trim();
+            if (!txt) return '-';
+            var normalized = txt.replace(' ', 'T');
+            var d = new Date(normalized);
+            if (Number.isNaN(d.getTime())) return txt;
+            return d.toLocaleString('id-ID', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function setSalesTab(tab) {
+            var next = tab === 'history' ? 'history' : 'transaksi';
+            document.querySelectorAll('[data-sales-tab]').forEach(function(btn) {
+                btn.classList.toggle('is-active', btn.getAttribute('data-sales-tab') === next);
+            });
+            document.querySelectorAll('[data-sales-pane]').forEach(function(pane) {
+                pane.style.display = pane.getAttribute('data-sales-pane') === next ? '' : 'none';
+            });
+            if (next === 'history' && !salesHistoryLoaded) {
+                loadSalesHistory(true);
+            }
+        }
+
+        function renderSalesHistory(payload) {
+            var container = document.getElementById('salesHistoryContainer');
+            if (!container) return;
+            var groups = payload && Array.isArray(payload.groups) ? payload.groups : [];
+            var totalTrx = payload && payload.total_transactions ? parseInt(payload.total_transactions, 10) || 0 : 0;
+            var periodLabel = payload && payload.period_label ? String(payload.period_label) : formatDateLabel(new Date().toISOString().slice(0, 10));
+            var totalNominal = payload && payload.total_nominal ? parseInt(payload.total_nominal, 10) || 0 : 0;
+            var summaryHtml = '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">' +
+                '<span class="sbadge scc border rounded-4 small">' + '<i class="bi bi-cart-check"></i> ' + totalTrx + ' Trx <i class="bi bi-calendar-check"></i> ' + escapeHtml(formatDateLabel(periodLabel)) + '</span>' +
+                '<span class="sbadge scc border rounded-4 small">' + 'Total: ' + escapeHtml(formatRp(totalNominal)) + '</span>' +
+                '</div>';
+            if (!Array.isArray(groups) || groups.length === 0) {
+                container.innerHTML = summaryHtml + '<div class="text-muted small">Belum ada histori penjualan.</div>';
+                return;
+            }
+            var allRows = [];
+            groups.forEach(function(group) {
+                var rows = Array.isArray(group.rows) ? group.rows : [];
+                rows.forEach(function(row) {
+                    allRows.push(row);
+                });
+            });
+            var tableRows = allRows.map(function(row, idx) {
+                var noTrx = escapeHtml(String(row.no_trx || '-'));
+                return '<tr>' +
+                    '<td>' + (idx + 1) + '</td>' +
+                    '<td><strong>' + noTrx + '</strong><br><span class="small text-muted">' + escapeHtml(formatDateTimeLabel(row.created_at || row.tanggal_input || '')) + '</span></td>' +
+                    '<td>' + escapeHtml(String(row.pelanggan || 'Umum / Non Member')) + '</td>' +
+                    '<td>' + escapeHtml(String(row.payment_method || '-')) + '</td>' +
+                    '<td class="text-end">' + formatRp(row.total || 0) + '</td>' +
+                    '<td><button type="button" class="btn-g btn-sm" data-sales-history-reprint="' + noTrx + '"><i class="bi bi-printer"></i></button></td>' +
+                    '</tr>';
+            }).join('');
+            container.innerHTML = summaryHtml +
+                '<div class="table-responsive" style="overflow-x:auto;">' +
+                '<table class="dtable w-100">' +
+                '<thead><tr><th style="width:56px;">No</th><th>Transaksi</th><th>Pelanggan</th><th>Metode</th><th style="width:130px;">Total</th><th style="width:150px;">Aksi</th></tr></thead>' +
+                '<tbody>' + tableRows + '</tbody>' +
+                '</table></div>';
+        }
+
+        async function loadSalesHistory(force) {
+            var container = document.getElementById('salesHistoryContainer');
+            if (!container) return;
+            if (!force && salesHistoryLoaded) return;
+            container.innerHTML = '<div class="text-muted small"><i class="bi bi-arrow-repeat spin-icon"></i> Memuat histori...</div>';
+            try {
+                var resp = await fetch('/transaksi/penjualan/history/daily', {
+                    method: 'GET'
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var payload = await resp.json();
+                renderSalesHistory(payload || {});
+                salesHistoryLoaded = true;
+            } catch (e) {
+                container.innerHTML = '<div class="text-danger small">Gagal memuat histori penjualan.</div>';
+            }
+        }
+
+        async function reprintSalesFromHistory(noTrx) {
+            var key = String(noTrx || '').trim();
+            if (key === '') return;
+            try {
+                var resp = await fetch('/transaksi/penjualan/receipt?no_trx=' + encodeURIComponent(key), {
+                    method: 'GET'
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var payload = await resp.json();
+                var data = payload && payload.data ? payload.data : null;
+                if (!data || !data.no_trx) {
+                    throw new Error('invalid');
+                }
+                showReceiptPreviewModal(data);
+            } catch (e) {
+                posToast('error', 'Gagal', 'Data nota tidak ditemukan untuk cetak ulang.');
+            }
+        }
+
         /* ===== CORE: UPDATE DOM ===== */
 
         function updateCsrf(doc) {
@@ -838,8 +937,223 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                 if (bi && !bi._userEdited) bi.value = val;
                 triggerKembalian();
             }
+            var receipt = extractReceiptFromDoc(doc);
+            if (receipt && receipt.no_trx) {
+                if (!window.posPenjualanConfig) window.posPenjualanConfig = {};
+                window.posPenjualanConfig.lastReceipt = receipt;
+            }
             syncTransactionModeBadge();
             initQtyForms();
+        }
+
+        function extractPosState(doc) {
+            var qtyEl = doc.querySelector('#summaryQty');
+            var grandEl = doc.querySelector('#summaryGrandTotal');
+            return {
+                cartRows: doc.querySelectorAll('#cartTableBody tr[data-cart-id]').length,
+                qty: parseInt(qtyEl ? qtyEl.textContent : '0', 10) || 0,
+                grandTotal: parseInt(grandEl ? (grandEl.getAttribute('data-value') || '0') : '0', 10) || 0
+            };
+        }
+
+        function extractServerToasts(doc) {
+            var script = doc.querySelector('script');
+            var matched = null;
+            doc.querySelectorAll('script').forEach(function(sc) {
+                var txt = String(sc.textContent || '');
+                if (txt.indexOf('window.__APP_TOASTS') !== -1) {
+                    matched = txt;
+                }
+            });
+            if (!matched) return [];
+            var m = matched.match(/window\.__APP_TOASTS\s*=\s*(\[[\s\S]*?\]);/);
+            if (!m || !m[1]) return [];
+            try {
+                var parsed = JSON.parse(m[1]);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function extractReceiptFromDoc(doc) {
+            var jsonNode = doc.getElementById('posLastReceiptData');
+            if (jsonNode) {
+                try {
+                    var fromJsonNode = JSON.parse(String(jsonNode.textContent || '{}'));
+                    if (fromJsonNode && fromJsonNode.no_trx) {
+                        return fromJsonNode;
+                    }
+                } catch (e) {}
+            }
+
+            var matched = null;
+            doc.querySelectorAll('script').forEach(function(sc) {
+                var txt = String(sc.textContent || '');
+                if (txt.indexOf('window.posPenjualanConfig') !== -1 && txt.indexOf('lastReceipt') !== -1) {
+                    matched = txt;
+                }
+            });
+            if (!matched) return null;
+            var m = matched.match(/window\.posPenjualanConfig\s*=\s*(\{[\s\S]*?\});/);
+            if (!m || !m[1]) return null;
+            try {
+                var parsed = JSON.parse(m[1]);
+                if (parsed && parsed.lastReceipt && parsed.lastReceipt.no_trx) {
+                    return parsed.lastReceipt;
+                }
+            } catch (e) {
+                // fallback: parse lastReceipt object directly if assignment JSON parse failed
+                var mReceipt = matched.match(/"lastReceipt"\s*:\s*(\{[\s\S]*\})/);
+                if (mReceipt && mReceipt[1]) {
+                    try {
+                        var parsedReceipt = JSON.parse(mReceipt[1]);
+                        if (parsedReceipt && parsedReceipt.no_trx) {
+                            return parsedReceipt;
+                        }
+                    } catch (err) {}
+                }
+                return null;
+            }
+            return null;
+        }
+
+        function hasServerErrorToast(toasts) {
+            var state = analyzeServerToasts(toasts);
+            return state.hasError || (state.hasWarning && !state.hasSuccess);
+        }
+
+        function firstServerToast(toasts) {
+            if (!Array.isArray(toasts) || toasts.length === 0) return null;
+            return toasts[0] || null;
+        }
+
+        function analyzeServerToasts(toasts) {
+            var state = {
+                hasSuccess: false,
+                hasWarning: false,
+                hasError: false,
+                firstSuccess: null,
+                firstError: null
+            };
+            if (!Array.isArray(toasts) || toasts.length === 0) return state;
+            toasts.forEach(function(t) {
+                var type = String(t && t.type ? t.type : '').toLowerCase();
+                if (type === 'success') {
+                    state.hasSuccess = true;
+                    if (!state.firstSuccess) state.firstSuccess = t;
+                    return;
+                }
+                if (type === 'warning') {
+                    state.hasWarning = true;
+                    if (!state.firstError) state.firstError = t;
+                    return;
+                }
+                if (type === 'error') {
+                    state.hasError = true;
+                    if (!state.firstError) state.firstError = t;
+                }
+            });
+            return state;
+        }
+
+        function buildReceiptHtml(data, autoPrint) {
+            if (!data || !data.no_trx) return;
+
+            function asText(value, fallback) {
+                if (value == null) return fallback || '-';
+                if (typeof value === 'object') {
+                    if (Array.isArray(value)) {
+                        return value.length > 0 ? asText(value[0], fallback) : (fallback || '-');
+                    }
+                    if (Object.prototype.hasOwnProperty.call(value, 'value')) {
+                        return asText(value.value, fallback);
+                    }
+                    if (Object.prototype.hasOwnProperty.call(value, 'message')) {
+                        return asText(value.message, fallback);
+                    }
+                    try {
+                        return JSON.stringify(value);
+                    } catch (e) {
+                        return fallback || '-';
+                    }
+                }
+                var txt = String(value).trim();
+                return txt === '' ? (fallback || '-') : txt;
+            }
+
+            var items = Array.isArray(data.items) ? data.items : [];
+            var itemRows = items.map(function(it) {
+                var name = escapeHtml(asText(it && it.name ? it.name : '-', '-'));
+                var qty = parseInt(it && it.qty ? it.qty : '0', 10) || 0;
+                var price = parseInt(it && it.jual ? it.jual : '0', 10) || 0;
+                var total = parseInt(it && it.total ? it.total : '0', 10) || 0;
+                return '<tr><td style="padding:2px 0;">' + name + '<br><span style="color:#666;">' + qty + ' x ' + formatRp(price) + '</span></td><td style="padding:2px 0;text-align:right;vertical-align:top;">' + formatRp(total) + '</td></tr>';
+            }).join('');
+
+            var pageCss = autoPrint ?
+                '@page{size:58mm auto;margin:2mm;} html,body{margin:0;padding:0;background:#fff;color:#000;font-family:monospace;font-size:11px;line-height:1.35;} .wrap{width:54mm;padding:2mm;margin:0;}' :
+                'html,body{margin:0;padding:0;color:#111;font-family:monospace;font-size:12px;line-height:1.4;} .wrap{width:min(100%,520px);box-sizing:border-box;padding:12px 14px;margin:10px auto;background:#fff;}';
+
+            var html = '' +
+                '<!doctype html><html><head><meta charset="utf-8"><title>Struk ' + escapeHtml(asText(data.no_trx, '-')) + '</title>' +
+                '<style>' +
+                pageCss +
+                '.center{text-align:center;} .right{text-align:right;} .line{border-top:1px dashed #000;margin:6px 0;}' +
+                'table{width:100%;border-collapse:collapse;} td{vertical-align:top;} .meta td{padding:1px 0;} .tot td{padding:1px 0;}' +
+                '.title{font-size:13px;font-weight:700;} .small{font-size:10px;color:#333;}' +
+                '</style></head><body><div class="wrap">' +
+                '<div class="center"><div class="title">' + escapeHtml('' + <?= json_encode(toko('nama_toko', 'LintasPos'), JSON_UNESCAPED_UNICODE) ?> + '') + '</div>' +
+                '<div class="small">' + escapeHtml('' + <?= json_encode(toko('alamat_toko', ''), JSON_UNESCAPED_UNICODE) ?> + '') + '</div>' +
+                '<div class="small">' + escapeHtml('' + <?= json_encode(toko('tlp', ''), JSON_UNESCAPED_UNICODE) ?> + '') + '</div></div>' +
+                '<div class="line"></div>' +
+                '<table class="meta">' +
+                '<tr><td>No</td><td class="right">' + escapeHtml(asText(data.no_trx, '-')) + '</td></tr>' +
+                '<tr><td>Tgl</td><td class="right">' + escapeHtml(asText(data.tanggal, '-')) + '</td></tr>' +
+                '<tr><td>Kasir</td><td class="right">' + escapeHtml(asText(data.kasir, '-')) + '</td></tr>' +
+                '<tr><td>Cust</td><td class="right">' + escapeHtml(asText(data.pelanggan, 'Umum')) + '</td></tr>' +
+                '<tr><td>Metode</td><td class="right">' + escapeHtml(asText(data.payment_method, '-')) + '</td></tr>' +
+                '</table>' +
+                '<div class="line"></div>' +
+                '<table>' + itemRows + '</table>' +
+                '<div class="line"></div>' +
+                '<table class="tot">' +
+                '<tr><td>Total</td><td class="right">' + formatRp(data.total || 0) + '</td></tr>' +
+                '<tr><td>Bayar</td><td class="right">' + formatRp(data.bayar || 0) + '</td></tr>' +
+                '<tr><td>Kembali</td><td class="right">' + formatRp(data.kembalian || 0) + '</td></tr>' +
+                '</table>' +
+                (asText(data.keterangan, '') !== '' ? '<div class="line"></div><div>Keterangan:<br>' + escapeHtml(asText(data.keterangan, '')) + '</div>' : '') +
+                '<div class="line"></div><div class="center">Terima kasih</div>' +
+                '</div>' +
+                (autoPrint ? '<script>window.onload=function(){window.print();};<\/script>' : '') +
+                '</body></html>';
+
+            return html;
+        }
+
+        function openReceiptPopup(data, popupRef) {
+            if (!data || !data.no_trx) return;
+            var html = buildReceiptHtml(data, true);
+            if (!html) return;
+            var popup = popupRef && !popupRef.closed ?
+                popupRef :
+                window.open('', 'pos_receipt_' + String(data.no_trx), 'width=420,height=760');
+            if (!popup) return;
+            popup.document.open();
+            popup.document.write(html);
+            popup.document.close();
+        }
+
+        function showReceiptPreviewModal(data) {
+            if (!data || !data.no_trx) return;
+            if (!window.posPenjualanConfig) window.posPenjualanConfig = {};
+            window.posPenjualanConfig.previewReceipt = data;
+            var frame = document.getElementById('receiptPreviewFrame');
+            if (frame) {
+                var html = buildReceiptHtml(data, false);
+                if (html) frame.srcdoc = html;
+            }
+            openModal('cmReceiptPreview');
         }
 
         function syncTransactionModeBadge() {
@@ -865,6 +1179,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
         async function posAjaxSubmit(form, msg, btn) {
             setBtnLoading(btn, true);
             try {
+                var beforeState = extractPosState(document);
                 var fd = new FormData(form);
                 var resp = await fetch(form.action, {
                     method: 'POST',
@@ -872,8 +1187,28 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                 });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 var html = await resp.text();
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var afterState = extractPosState(doc);
+                var serverToasts = extractServerToasts(doc);
+                var toastState = analyzeServerToasts(serverToasts);
                 updatePosFromHtml(html);
-                posToast('success', 'Berhasil', msg);
+                if (toastState.hasError || (toastState.hasWarning && !toastState.hasSuccess)) {
+                    var toastErr = toastState.firstError || firstServerToast(serverToasts);
+                    posToast((toastErr && toastErr.type) ? toastErr.type : 'error', 'Gagal', (toastErr && toastErr.message) ? toastErr.message : 'Proses gagal.');
+                    setBtnLoading(btn, false);
+                    return;
+                }
+                if (afterState.qty <= beforeState.qty && form.action.indexOf('/cart/add') !== -1 && !toastState.hasSuccess) {
+                    posToast('error', 'Gagal', 'Item tidak berhasil masuk ke keranjang.');
+                    setBtnLoading(btn, false);
+                    return;
+                }
+                var toastOk = toastState.firstSuccess || firstServerToast(serverToasts);
+                if (toastOk && toastOk.message) {
+                    posToast((toastOk.type || 'success'), 'Berhasil', toastOk.message);
+                } else {
+                    posToast('success', 'Berhasil', msg);
+                }
                 if (form.querySelector('select[name="item_id"]')) {
                     form.querySelector('select[name="item_id"]').value = '';
                     var qi = form.querySelector('input[name="qty"]');
@@ -947,6 +1282,53 @@ if ((int) ($activeHoldId ?? 0) > 0) {
             });
         }
 
+        function applyPickerSearch(modal, query) {
+            if (!modal) return;
+            var term = String(query || '').trim().toLowerCase();
+            var items = Array.prototype.slice.call(modal.querySelectorAll('[data-pick-item]'));
+            items.forEach(function(row) {
+                var keywords = String(row.getAttribute('data-pick-keywords') || '').toLowerCase();
+                var visible = term === '' || keywords.indexOf(term) !== -1;
+                row.hidden = !visible;
+                if (!visible) {
+                    var check = row.querySelector('[data-pick-check]');
+                    if (check) check.checked = false;
+                }
+            });
+            updatePickerState(modal);
+        }
+
+        function initPickerSearch(modal) {
+            if (!modal) return;
+            var wrap = modal.querySelector('[data-pick-search-wrap]');
+            if (!wrap) return;
+            var input = wrap.querySelector('[data-pick-search]');
+            var loading = wrap.querySelector('[data-pick-loading]');
+            if (!input || input._pickSearchInit) return;
+            input._pickSearchInit = true;
+            setSearchLoading(wrap, false, loading);
+
+            input.addEventListener('input', function() {
+                var self = this;
+                setSearchLoading(wrap, true, loading);
+                if (self._pickSearchTimer) {
+                    clearTimeout(self._pickSearchTimer);
+                }
+                self._pickSearchTimer = setTimeout(function() {
+                    applyPickerSearch(modal, self.value || '');
+                    setSearchLoading(wrap, false, loading);
+                }, 250);
+            });
+        }
+
+        function setSearchLoading(wrap, isLoading, loadingEl) {
+            if (!wrap) return;
+            wrap.classList.toggle('is-loading', !!isLoading);
+            if (loadingEl) {
+                loadingEl.style.display = isLoading ? 'inline-flex' : 'none';
+            }
+        }
+
         function findModalByItemType(itemType) {
             if (itemType === 'jasa') return document.getElementById('cmAddJasa');
             return document.getElementById('cmAddBarang');
@@ -976,7 +1358,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
             if (!modal) return;
             var rows = Array.prototype.slice.call(modal.querySelectorAll('[data-pick-item]')).filter(function(row) {
                 var check = row.querySelector('[data-pick-check]');
-                return !!check && check.checked;
+                return !!check && !check.disabled && check.checked;
             });
             if (rows.length === 0) {
                 posToast('warning', 'Perhatian', 'Pilih minimal satu item.');
@@ -988,9 +1370,14 @@ if ((int) ($activeHoldId ?? 0) > 0) {
             var tokenVal = token ? token.value : '';
             var okCount = 0;
             var failedCount = 0;
+            var failMessages = [];
 
             for (var i = 0; i < rows.length; i += 1) {
                 var row = rows[i];
+                var check = row.querySelector('[data-pick-check]');
+                if (!check || check.disabled || !check.checked) {
+                    continue;
+                }
                 var itemType = row.getAttribute('data-item-type') || '';
                 var itemId = row.getAttribute('data-item-id') || '0';
                 var qtyInput = row.querySelector('[data-pick-qty]');
@@ -1000,6 +1387,19 @@ if ((int) ($activeHoldId ?? 0) > 0) {
 
                 if (!itemType || parseInt(itemId, 10) <= 0) {
                     failedCount += 1;
+                    failMessages.push('Data item tidak valid.');
+                    continue;
+                }
+
+                if (qtyInput && qtyInput.disabled) {
+                    failedCount += 1;
+                    failMessages.push('Stok item habis.');
+                    continue;
+                }
+
+                if (itemType === 'barang' && max <= 0) {
+                    failedCount += 1;
+                    failMessages.push('Stok barang habis.');
                     continue;
                 }
 
@@ -1012,16 +1412,35 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                 fd.append('qty', String(qty));
 
                 try {
+                    var beforeState = extractPosState(document);
                     var resp = await fetch('/transaksi/penjualan/cart/add', {
                         method: 'POST',
                         body: fd
                     });
                     if (!resp.ok) throw new Error('HTTP ' + resp.status);
                     var html = await resp.text();
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+                    var afterState = extractPosState(doc);
+                    var serverToasts = extractServerToasts(doc);
+                    var toastState = analyzeServerToasts(serverToasts);
                     updatePosFromHtml(html);
-                    okCount += 1;
+
+                    var newToken = document.querySelector('input[name="_token"]');
+                    if (newToken && newToken.value) tokenVal = newToken.value;
+
+                    if (afterState.qty > beforeState.qty || (toastState.hasSuccess && !toastState.hasError)) {
+                        okCount += 1;
+                    } else {
+                        failedCount += 1;
+                        if (toastState.firstError && toastState.firstError.message) {
+                            failMessages.push(String(toastState.firstError.message));
+                        } else {
+                            failMessages.push('Item gagal ditambahkan ke keranjang.');
+                        }
+                    }
                 } catch (e) {
                     failedCount += 1;
+                    failMessages.push('Terjadi kesalahan saat menambah item.');
                 }
             }
 
@@ -1041,7 +1460,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
             } else if (okCount > 0 && failedCount > 0) {
                 posToast('warning', 'Sebagian Berhasil', okCount + ' item masuk, ' + failedCount + ' item gagal.');
             } else {
-                posToast('error', 'Gagal', 'Item gagal ditambahkan ke keranjang.');
+                posToast('error', 'Gagal', failMessages.length > 0 ? failMessages[0] : 'Item gagal ditambahkan ke keranjang.');
             }
 
             setBtnLoading(btn, false);
@@ -1114,6 +1533,30 @@ if ((int) ($activeHoldId ?? 0) > 0) {
         /* ===== CORE: CHECKOUT ===== */
 
         async function posCheckout(form, btn) {
+            var paymentMethod = document.getElementById('checkoutMethod');
+            var bayarInput = document.getElementById('checkoutBayar');
+            var cartRowsBefore = document.querySelectorAll('#cartTableBody tr[data-cart-id]').length;
+            var grandEl = document.getElementById('summaryGrandTotal');
+            var grandBefore = parseInt(grandEl ? (grandEl.getAttribute('data-value') || '0') : '0', 10) || 0;
+
+            if (cartRowsBefore < 1 || grandBefore <= 0) {
+                posToast('warning', 'Perhatian', 'Keranjang masih kosong. Tambahkan barang/jasa terlebih dahulu.');
+                switchTab('barang');
+                return;
+            }
+            if (!paymentMethod || String(paymentMethod.value || '').trim() === '') {
+                posToast('warning', 'Perhatian', 'Metode pembayaran wajib dipilih.');
+                switchTab('checkout');
+                if (paymentMethod) paymentMethod.focus();
+                return;
+            }
+            if (!bayarInput || (parseInt(bayarInput.value || '0', 10) || 0) <= 0) {
+                posToast('warning', 'Perhatian', 'Nominal bayar harus lebih dari 0.');
+                switchTab('checkout');
+                if (bayarInput) bayarInput.focus();
+                return;
+            }
+
             setBtnLoading(btn, true, 'Memproses...');
             try {
                 var fd = new FormData(form);
@@ -1121,17 +1564,32 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                     method: 'POST',
                     body: fd
                 });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 var html = await resp.text();
                 if (html.indexOf('cartTableBody') !== -1) {
                     var doc = new DOMParser().parseFromString(html, 'text/html');
+                    var serverToasts = extractServerToasts(doc);
                     updatePosFromHtml(html);
                     var cartRowsAfter = doc.querySelectorAll('#cartTableBody tr[data-cart-id]').length;
-                    if (cartRowsAfter === 0) {
-                        posToast('success', 'Berhasil', 'Transaksi berhasil diproses');
+                    var okToast = serverToasts.some(function(t) {
+                        return String((t && t.type) || '').toLowerCase() === 'success';
+                    });
+                    var hardErrorToast = serverToasts.some(function(t) {
+                        var type = String((t && t.type) || '').toLowerCase();
+                        return type === 'error';
+                    });
+                    if (cartRowsBefore > 0 && cartRowsAfter === 0 && (okToast || !hardErrorToast)) {
+                        var toastOk = firstServerToast(serverToasts);
+                        posToast('success', 'Berhasil', (toastOk && toastOk.message) ? toastOk.message : 'Transaksi berhasil diproses');
                         form.reset();
                         switchTab('barang');
+                        if (window.posPenjualanConfig && window.posPenjualanConfig.lastReceipt && window.posPenjualanConfig.lastReceipt.no_trx) {
+                            showReceiptPreviewModal(window.posPenjualanConfig.lastReceipt);
+                            window.posPenjualanConfig.lastReceipt = null;
+                        }
                     } else {
-                        posToast('warning', 'Checkout Ditolak', 'Nominal bayar belum valid atau checkout gagal diproses.');
+                        var toastErr = firstServerToast(serverToasts);
+                        posToast((toastErr && toastErr.type) ? toastErr.type : 'warning', 'Checkout Ditolak', (toastErr && toastErr.message) ? toastErr.message : 'Checkout gagal diproses.');
                     }
                 } else {
                     document.open();
@@ -1301,6 +1759,41 @@ if ((int) ($activeHoldId ?? 0) > 0) {
         });
 
         document.addEventListener('click', function(e) {
+            var salesTabBtn = e.target.closest('[data-sales-tab]');
+            if (salesTabBtn) {
+                e.preventDefault();
+                setSalesTab(salesTabBtn.getAttribute('data-sales-tab') || 'transaksi');
+                return;
+            }
+
+            var salesRefreshBtn = e.target.closest('[data-sales-history-refresh]');
+            if (salesRefreshBtn) {
+                e.preventDefault();
+                loadSalesHistory(true);
+                return;
+            }
+
+            var salesReprintBtn = e.target.closest('[data-sales-history-reprint]');
+            if (salesReprintBtn) {
+                e.preventDefault();
+                reprintSalesFromHistory(salesReprintBtn.getAttribute('data-sales-history-reprint') || '');
+                return;
+            }
+
+            var printBtn = e.target.closest('[data-receipt-print]');
+            if (printBtn) {
+                e.preventDefault();
+                var data = window.posPenjualanConfig && window.posPenjualanConfig.previewReceipt ?
+                    window.posPenjualanConfig.previewReceipt :
+                    null;
+                if (!data || !data.no_trx) {
+                    posToast('warning', 'Perhatian', 'Data nota tidak tersedia.');
+                    return;
+                }
+                openReceiptPopup(data);
+                return;
+            }
+
             var openBtn = e.target.closest('[data-cm-open]');
             if (openBtn) {
                 e.preventDefault();
@@ -1398,6 +1891,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
             initKembalian();
             initAddFormEnterKeys();
             syncTransactionModeBadge();
+            setSalesTab('transaksi');
             document.querySelectorAll('.pos-pick-qty-input').forEach(function(input) {
                 input.addEventListener('input', function() {
                     var max = parseInt(this.getAttribute('max') || '0', 10);
@@ -1409,6 +1903,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
             });
             document.querySelectorAll('[data-cm-bg]').forEach(function(modal) {
                 updatePickerState(modal);
+                initPickerSearch(modal);
             });
             var resumeBtn = document.getElementById('resumeHoldConfirmBtn');
             if (resumeBtn) {
@@ -1418,6 +1913,11 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                     if (!holdId) return;
                     posResumeHold(holdId, document.querySelector('.hold-card[data-hold-id="' + String(holdId) + '"]'));
                 });
+            }
+
+            if (window.posPenjualanConfig && window.posPenjualanConfig.lastReceipt && window.posPenjualanConfig.lastReceipt.no_trx) {
+                showReceiptPreviewModal(window.posPenjualanConfig.lastReceipt);
+                window.posPenjualanConfig.lastReceipt = null;
             }
         });
 

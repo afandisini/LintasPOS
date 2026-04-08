@@ -3,6 +3,8 @@
 /** @var string $title */
 /** @var array<string,mixed> $auth */
 /** @var string $activeMenu */
+/** @var string $activeTab */
+/** @var array<int,array<string,mixed>> $menuOrderItems */
 
 $dataTablesHead = raw(
     '<link href="' . e(base_url('assets/vendor/datatables/dataTables.bootstrap5.min.css')) . '" rel="stylesheet">'
@@ -37,38 +39,105 @@ $dataTablesHead = raw(
         </div>
     </div>
 
-    <div class="panel anim">
-        <div class="panel-head">
-            <span class="panel-title">Daftar Konfigurasi Generator</span>
-            <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn-g btn-sm" data-cm-open="cmMenuGeneratorGuide">
-                    <i class="bi bi-question-circle me-1"></i><span>Bantuan Aturan DB</span>
-                </button>
-                <a class="btn-a btn-sm" href="<?= e(site_url('menu-generator/create')) ?>">
-                    <i class="bi bi-plus-circle me-1"></i><span>Tambah Konfigurasi</span>
-                </a>
+    <?php $currentTab = in_array(($activeTab ?? 'config'), ['config', 'menu-order'], true) ? (string) ($activeTab ?? 'config') : 'config'; ?>
+    <div class="keu-tab-wrap mb-3 anim">
+        <a class="keu-tab-link <?= e($currentTab === 'config' ? 'is-active' : '') ?>" href="#" data-mg-tab="config">
+            <i class="bi bi-grid-3x3-gap"></i><span>Konfigurasi</span>
+        </a>
+        <a class="keu-tab-link <?= e($currentTab === 'menu-order' ? 'is-active' : '') ?>" href="#" data-mg-tab="menu-order">
+            <i class="bi bi-arrow-down-up"></i><span>Menu Order</span>
+        </a>
+    </div>
+
+    <div class="mg-content <?= e($currentTab === 'config' ? 'active' : '') ?>" data-mg-content="config" <?= $currentTab === 'config' ? '' : 'style="display:none;"' ?>>
+        <div class="panel anim">
+            <div class="panel-head">
+                <span class="panel-title">Daftar Konfigurasi Generator</span>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn-g btn-sm" data-cm-open="cmMenuGeneratorGuide">
+                        <i class="bi bi-question-circle me-1"></i><span>Bantuan Aturan DB</span>
+                    </button>
+                    <a class="btn-a btn-sm" href="<?= e(site_url('menu-generator/create')) ?>">
+                        <i class="bi bi-plus-circle me-1"></i><span>Tambah Konfigurasi</span>
+                    </a>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="dt-wrap generated-dt-wrap mg-dt-wrap">
+                    <table class="dtable generated-table w-100 nowrap" id="mgTable">
+                        <thead>
+                            <tr>
+                                <th>No.</th>
+                                <th>Modul</th>
+                                <th>Tabel</th>
+                                <th>Status</th>
+                                <th>Generated</th>
+                                <th>Update</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" class="text-muted">Memuat data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-        <div class="panel-body">
-            <div class="dt-wrap mg-dt-wrap">
-                <table class="dtable w-100 nowrap" id="mgTable">
-                    <thead>
-                        <tr>
-                            <th>No.</th>
-                            <th>Modul</th>
-                            <th>Tabel</th>
-                            <th>Status</th>
-                            <th>Generated</th>
-                            <th>Update</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td colspan="7" class="text-muted">Memuat data...</td>
-                        </tr>
-                    </tbody>
-                </table>
+    </div>
+
+    <div class="mg-content <?= e($currentTab === 'menu-order' ? 'active' : '') ?>" data-mg-content="menu-order" <?= $currentTab === 'menu-order' ? '' : 'style="display:none;"' ?>>
+        <div class="panel anim">
+            <div class="panel-head">
+                <span class="panel-title">Menu Order Sidebar</span>
+                <div class="small text-muted">Tahan Geser klik tombol, Untuk Pindah menu lalu simpan.</div>
+            </div>
+            <div class="panel-body">
+                <form method="post" action="<?= e(site_url('menu-generator/menu-order')) ?>" id="mgMenuOrderForm">
+                    <?= raw(csrf_field()) ?>
+                    <input type="hidden" name="order_json" id="mgOrderJson" value="[]">
+
+                    <ul class="mg-order-list" id="mgOrderList">
+                        <?php if (($menuOrderItems ?? []) === []): ?>
+                            <li class="mg-order-empty">Belum ada menu dari database yang bisa diurutkan.</li>
+                        <?php else: ?>
+                            <?php foreach (($menuOrderItems ?? []) as $index => $item): ?>
+                                <?php
+                                $menuId = (int) ($item['id'] ?? 0);
+                                $menuTitle = trim((string) ($item['menu_title'] ?? ''));
+                                $moduleName = trim((string) ($item['module_name'] ?? ''));
+                                $label = $menuTitle !== '' ? $menuTitle : ($moduleName !== '' ? $moduleName : ('Menu #' . $menuId));
+                                $routePrefix = trim((string) ($item['route_prefix'] ?? ''), '/');
+                                $parentKey = trim((string) ($item['parent_menu_key'] ?? ''));
+                                ?>
+                                <li class="mg-order-item" data-menu-id="<?= e((string) $menuId) ?>" draggable="true">
+                                    <div class="mg-order-pos"><?= e((string) ((int) $index + 1)) ?></div>
+                                    <div class="mg-order-main">
+                                        <div class="mg-order-title">
+                                            <span class="mg-order-handle" title="Drag untuk geser"><i class="bi bi-grip-vertical"></i></span>
+                                            <span><?= e($label) ?></span>
+                                        </div>
+                                        <div class="mg-order-meta">
+                                            <span><i class="bi bi-signpost-2 me-1"></i><?= e($routePrefix !== '' ? ('/' . $routePrefix) : '-') ?></span>
+                                            <span><i class="bi bi-collection me-1"></i><?= e($parentKey !== '' ? $parentKey : '-') ?></span>
+                                        </div>
+                                    </div>
+                                    <div class="mg-order-actions">
+                                        <button type="button" class="btn-g btn-sm" data-order-action="up"><i class="bi bi-arrow-up"></i></button>
+                                        <button type="button" class="btn-g btn-sm" data-order-action="down"><i class="bi bi-arrow-down"></i></button>
+                                    </div>
+                                </li>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </ul>
+
+                    <div class="d-flex justify-content-end mt-3">
+                        <button type="submit" class="btn-a btn-sm" id="mgSaveOrderBtn">
+                            <i class="bi bi-check2-circle me-1"></i><span>Simpan Urutan</span>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -190,7 +259,8 @@ nama VARCHAR(120) NOT NULL</pre>
         generateUrl: <?= json_encode(site_url('menu-generator/generate'), JSON_UNESCAPED_UNICODE) ?>,
         deleteUrl: <?= json_encode(site_url('menu-generator/delete'), JSON_UNESCAPED_UNICODE) ?>,
         deleteGeneratedUrl: <?= json_encode(site_url('menu-generator/delete-generated'), JSON_UNESCAPED_UNICODE) ?>,
-        csrfToken: <?= json_encode(csrf_token(), JSON_UNESCAPED_UNICODE) ?>
+        csrfToken: <?= json_encode(csrf_token(), JSON_UNESCAPED_UNICODE) ?>,
+        activeTab: <?= json_encode($currentTab, JSON_UNESCAPED_UNICODE) ?>
     };
 </script>
 <?= raw(module_script('MenuGenerator/js/menu-generator.js')) ?>

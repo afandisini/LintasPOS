@@ -105,10 +105,10 @@
 
     return (
       "" +
-      '<div class="d-flex gap-1 flex-wrap">' +
-      '<a class="btn-g btn-sm" href="' +
+      '<div class="d-flex gap-1">' +
+      '<a class="btn-g btn-sm" title="Edit" href="' +
       editUrl +
-      '"><i class="bi bi-pencil-square me-1"></i><span>Edit</span></a>' +
+      '"><i class="bi bi-pencil-square me-1"></i></a>' +
       '<form method="post" action="' +
       cfg.generateUrl +
       '">' +
@@ -118,7 +118,7 @@
       '<input type="hidden" name="id" value="' +
       token +
       '">' +
-      '<button type="submit" class="btn-a btn-sm"><i class="bi bi-gear-wide-connected me-1"></i><span>Generate</span></button>' +
+      '<button type="submit" title="Generate" class="btn-a btn-sm"><i class="bi bi-gear-wide-connected"></i></button>' +
       "</form>" +
       '<form method="post" action="' +
       cfg.deleteGeneratedUrl +
@@ -129,7 +129,7 @@
       '<input type="hidden" name="id" value="' +
       token +
       '">' +
-      '<button type="submit" class="btn-g btn-sm"><i class="bi bi-trash3 me-1"></i><span>Delete Generated</span></button>' +
+      '<button type="submit" title="Hapus Fitur" class="btn-g btn-sm"><i class="bi bi-trash3"></i></button>' +
       "</form>" +
       '<form method="post" action="' +
       cfg.deleteUrl +
@@ -140,7 +140,7 @@
       '<input type="hidden" name="id" value="' +
       token +
       '">' +
-      '<button type="submit" class="btn-g btn-sm"><i class="bi bi-slash-circle me-1"></i><span>Disable</span></button>' +
+      '<button type="submit" title="Nonaktifkan" class="btn-g btn-sm"><i class="bi bi-slash-circle"></i></button>' +
       "</form>" +
       "</div>"
     );
@@ -162,6 +162,7 @@
       ordering: true,
       lengthChange: true,
       pageLength: 10,
+      scrollX: true,
       language: {
         url: cfg.languageUrl || "",
       },
@@ -175,9 +176,10 @@
           orderable: false,
           searchable: false,
           render: function (data, type, row, meta) {
-            var start = meta && meta.settings && meta.settings._iDisplayStart
-              ? meta.settings._iDisplayStart
-              : 0;
+            var start =
+              meta && meta.settings && meta.settings._iDisplayStart
+                ? meta.settings._iDisplayStart
+                : 0;
             return start + meta.row + 1;
           },
         },
@@ -188,7 +190,7 @@
           render: function (data) {
             var status = String(data || "draft");
             return (
-              '<span class="sbadge ' +
+              '<span class="sbadge small ' +
               badgeClass(status) +
               '"><span class="sd"></span>' +
               statusLabel(status) +
@@ -386,6 +388,151 @@
     });
   }
 
+  function bindMenuGeneratorTabs() {
+    var tabButtons = document.querySelectorAll("[data-mg-tab]");
+    if (!tabButtons || tabButtons.length < 1) {
+      return;
+    }
+
+    document.addEventListener("click", function (event) {
+      var button = event.target.closest("[data-mg-tab]");
+      if (!button) {
+        return;
+      }
+      event.preventDefault();
+      var tab = button.getAttribute("data-mg-tab") || "config";
+
+      tabButtons.forEach(function (btn) {
+        btn.classList.toggle(
+          "is-active",
+          (btn.getAttribute("data-mg-tab") || "") === tab,
+        );
+      });
+      document
+        .querySelectorAll("[data-mg-content]")
+        .forEach(function (content) {
+          var active = (content.getAttribute("data-mg-content") || "") === tab;
+          content.style.display = active ? "" : "none";
+          content.classList.toggle("active", active);
+        });
+
+      if (
+        tab === "config" &&
+        typeof window.jQuery !== "undefined" &&
+        typeof window.jQuery.fn.DataTable !== "undefined" &&
+        window.jQuery.fn.dataTable.isDataTable("#mgTable")
+      ) {
+        window.jQuery("#mgTable").DataTable().columns.adjust();
+      }
+
+      try {
+        var url = new URL(window.location.href);
+        if (tab === "config") {
+          url.searchParams.delete("tab");
+        } else {
+          url.searchParams.set("tab", tab);
+        }
+        window.history.replaceState({}, "", url.toString());
+      } catch (error) {
+        // no-op
+      }
+    });
+  }
+
+  function syncOrderJson(orderList, orderInput) {
+    if (!orderList || !orderInput) return;
+    var ids = [];
+    orderList.querySelectorAll("[data-menu-id]").forEach(function (item, idx) {
+      var id = Number(item.getAttribute("data-menu-id") || "0");
+      if (id > 0) {
+        ids.push(id);
+      }
+      var pos = item.querySelector(".mg-order-pos");
+      if (pos) {
+        pos.textContent = String(idx + 1);
+      }
+    });
+    orderInput.value = JSON.stringify(ids);
+  }
+
+  function moveOrderItem(item, direction) {
+    if (!(item instanceof HTMLElement)) return;
+    if (direction === "up" && item.previousElementSibling) {
+      item.parentNode.insertBefore(item, item.previousElementSibling);
+      return;
+    }
+    if (direction === "down" && item.nextElementSibling) {
+      item.parentNode.insertBefore(item.nextElementSibling, item);
+    }
+  }
+
+  function bindMenuOrder() {
+    var orderList = document.getElementById("mgOrderList");
+    var orderInput = document.getElementById("mgOrderJson");
+    var orderForm = document.getElementById("mgMenuOrderForm");
+    if (!orderList || !orderInput || !orderForm) {
+      return;
+    }
+
+    syncOrderJson(orderList, orderInput);
+
+    var dragItem = null;
+
+    orderList.addEventListener("dragstart", function (event) {
+      var item = event.target.closest(".mg-order-item");
+      if (!(item instanceof HTMLElement)) {
+        return;
+      }
+      dragItem = item;
+      item.classList.add("is-dragging");
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+      }
+    });
+
+    orderList.addEventListener("dragend", function (event) {
+      var item = event.target.closest(".mg-order-item");
+      if (item) {
+        item.classList.remove("is-dragging");
+      }
+      dragItem = null;
+      syncOrderJson(orderList, orderInput);
+    });
+
+    orderList.addEventListener("dragover", function (event) {
+      if (!dragItem) return;
+      event.preventDefault();
+      var target = event.target.closest(".mg-order-item");
+      if (!(target instanceof HTMLElement) || target === dragItem) {
+        return;
+      }
+      var rect = target.getBoundingClientRect();
+      var shouldInsertBefore = event.clientY < rect.top + rect.height / 2;
+      if (shouldInsertBefore) {
+        orderList.insertBefore(dragItem, target);
+      } else {
+        orderList.insertBefore(dragItem, target.nextElementSibling);
+      }
+      syncOrderJson(orderList, orderInput);
+    });
+
+    orderList.addEventListener("click", function (event) {
+      var actionButton = event.target.closest("[data-order-action]");
+      if (!actionButton) return;
+      var item = actionButton.closest(".mg-order-item");
+      if (!item) return;
+      var action = actionButton.getAttribute("data-order-action") || "";
+      if (action === "up" || action === "down") {
+        moveOrderItem(item, action);
+        syncOrderJson(orderList, orderInput);
+      }
+    });
+
+    orderForm.addEventListener("submit", function () {
+      syncOrderJson(orderList, orderInput);
+    });
+  }
+
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") {
       document.querySelectorAll(".cm-bg.show").forEach(function (modal) {
@@ -396,9 +543,11 @@
   });
 
   document.addEventListener("DOMContentLoaded", function () {
+    bindMenuGeneratorTabs();
     bindModalHandlers();
     bindConfirmModal();
     initDatatable();
     bindScanTable();
+    bindMenuOrder();
   });
 })();

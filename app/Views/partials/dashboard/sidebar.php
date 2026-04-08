@@ -9,10 +9,6 @@ $currentPath = (string) (parse_url($rawUri, PHP_URL_PATH) ?: '/');
 $isDashboard = $currentPath === '/dashboard';
 $isUsers = $currentPath === '/users' || str_starts_with($currentPath, '/users/');
 $isFilemanager = $currentPath === '/filemanager' || str_starts_with($currentPath, '/filemanager/');
-$isPenjualan = $currentPath === '/transaksi/penjualan' || str_starts_with($currentPath, '/transaksi/penjualan/');
-$isPembelian = $currentPath === '/transaksi/pembelian' || str_starts_with($currentPath, '/transaksi/pembelian/');
-$isInputKeuangan = $currentPath === '/keuangan/input' || str_starts_with($currentPath, '/keuangan/input/');
-$isLaporan = $currentPath === '/laporan' || str_starts_with($currentPath, '/laporan/');
 $isToko = $currentPath === '/toko' || str_starts_with($currentPath, '/toko/');
 $isMenuGenerator = $currentPath === '/menu-generator' || str_starts_with($currentPath, '/menu-generator/');
 
@@ -25,18 +21,6 @@ if (($activeMenu ?? '') === 'users') {
 }
 if (($activeMenu ?? '') === 'filemanager') {
     $isFilemanager = true;
-}
-if (($activeMenu ?? '') === 'transaksi-penjualan') {
-    $isPenjualan = true;
-}
-if (($activeMenu ?? '') === 'transaksi-pembelian') {
-    $isPembelian = true;
-}
-if (($activeMenu ?? '') === 'keuangan-input') {
-    $isInputKeuangan = true;
-}
-if (($activeMenu ?? '') === 'laporan') {
-    $isLaporan = true;
 }
 if (($activeMenu ?? '') === 'toko') {
     $isToko = true;
@@ -73,23 +57,35 @@ foreach ($generatedMenus as $menu) {
         <div class="nav-label">Menu Utama</div>
         <a class="s-link <?= e($isDashboard ? 'active' : '') ?>" href="<?= e(site_url('dashboard')) ?>"><i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span></a>
 
-        <div class="nav-label">Transaksi</div>
-        <a class="s-link <?= e($isPenjualan ? 'active' : '') ?>" href="<?= e(site_url('transaksi/penjualan')) ?>"><i class="bi bi-cart-check"></i><span>Penjualan</span></a>
-        <a class="s-link <?= e($isPembelian ? 'active' : '') ?>" href="<?= e(site_url('transaksi/pembelian')) ?>"><i class="bi bi-bag-check"></i><span>Pembelian</span></a>
-
-        <div class="nav-label">Keuangan</div>
-        <a class="s-link <?= e($isInputKeuangan ? 'active' : '') ?>" href="<?= e(site_url('keuangan/input')) ?>"><i class="bi bi-cash-stack"></i><span>Input Keuangan</span></a>
-
-        <div class="nav-label">Laporan</div>
-        <a class="s-link <?= e($isLaporan ? 'active' : '') ?>" href="<?= e(site_url('laporan')) ?>"><i class="bi bi-journal-text"></i><span>Laporan</span></a>
-
         <?php if ($generatedMenuGroups !== []): ?>
             <?php foreach ($generatedMenuGroups as $groupKey => $menus): ?>
                 <?php
                 $label = ucwords(str_replace(['-', '_'], ' ', (string) $groupKey));
+                $groupKeyNormalized = strtolower(trim((string) $groupKey));
+                $visibleMenus = [];
+                $groupMenuCount = count($menus);
+                foreach ($menus as $menu) {
+                    if (!is_array($menu)) {
+                        continue;
+                    }
+                    $routePrefix = trim((string) ($menu['route_prefix'] ?? ''), '/');
+                    if ($routePrefix === '') {
+                        continue;
+                    }
+
+                    // Hide parent container link when a group has children.
+                    // Example: transaksi parent (/transaksi) + children (/transaksi/penjualan, /transaksi/pembelian)
+                    if ($groupMenuCount > 1 && strtolower($routePrefix) === $groupKeyNormalized) {
+                        continue;
+                    }
+                    $visibleMenus[] = $menu;
+                }
+                if ($visibleMenus === []) {
+                    $visibleMenus = $menus;
+                }
                 ?>
                 <div class="nav-label"><?= e($label) ?></div>
-                <?php foreach ($menus as $menu): ?>
+                <?php foreach ($visibleMenus as $menu): ?>
                     <?php
                     $routePrefix = trim((string) ($menu['route_prefix'] ?? ''), '/');
                     if ($routePrefix === '') {

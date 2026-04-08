@@ -55,6 +55,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
     <div class="keu-tab-wrap mb-3 anim">
         <a class="keu-tab-link is-active" href="#" data-purchase-tab="pembelian"><i class="bi bi-bag-check"></i><span>Pembelian</span></a>
         <a class="keu-tab-link" href="#" data-purchase-tab="po"><i class="bi bi-file-earmark-text"></i><span>PO (Purchase Order)</span></a>
+        <a class="keu-tab-link" href="#" data-purchase-tab="history"><i class="bi bi-clock-history"></i><span>History</span></a>
     </div>
 
     <div class="pos-grid anim" id="purchaseMain" data-purchase-pane="pembelian">
@@ -264,6 +265,19 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
         </div>
     </div>
 
+    <div class="panel anim" data-purchase-pane="history" style="display:none;">
+        <div class="panel-head">
+            <span class="panel-title"><i class="bi bi-clock-history"></i> Histori Pembelian Berhasil</span>
+            <button type="button" class="btn-g btn-sm" data-purchase-history-refresh><i class="bi bi-arrow-repeat"></i> Refresh</button>
+        </div>
+        <div class="panel-body">
+            <div class="small text-muted mb-2">Riwayat pembelian yang berhasil diproses. Transaksi gagal yang hanya masuk PO tidak ditampilkan.</div>
+            <div id="purchaseHistoryContainer">
+                <div class="text-muted small">Memuat histori...</div>
+            </div>
+        </div>
+    </div>
+
     <div class="cm-bg" id="cmAddPembelianBarang" data-cm-bg>
         <div class="panel cm-box cm-box-lg pos-pick-modal" role="dialog" aria-modal="true" aria-labelledby="cmAddPembelianBarangTitle">
             <div class="panel-head">
@@ -279,6 +293,17 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                     <div class="pos-pick-view">
                         <button type="button" class="btn-g btn-sm is-active" data-pick-view="grid"><i class="bi bi-grid-3x2-gap"></i> Grid</button>
                         <button type="button" class="btn-g btn-sm" data-pick-view="list"><i class="bi bi-list-ul"></i> List</button>
+                    </div>
+                </div>
+                <div class="pos-pick-search mb-2" data-pick-search-wrap>
+                    <label class="fl pos-pick-label" style="margin-bottom:6px;">Pencarian Produk</label>
+                    <div class="pos-pick-search-box" data-pick-search-box>
+                        <i class="bi bi-search pos-pick-search-icon" data-pick-search-icon aria-hidden="true"></i>
+                        <div class="pos-pick-search-loading" data-pick-loading style="display:none;">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Memuat...</span>
+                        </div>
+                        <input type="text" class="fi pos-pick-search-input" data-pick-search placeholder="Cari nama / kode barang..." autocomplete="off">
                     </div>
                 </div>
                 <div class="pos-pick-items pos-pick-grid" data-pick-items>
@@ -298,7 +323,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                         $itemStock = max(0, (int) ($item['stok'] ?? 0));
                         $itemImage = $mediaUrl($item['gambar_path'] ?? $item['gambar'] ?? '');
                         ?>
-                        <article class="pos-pick-card" data-pick-item data-item-id="<?= e((string) $itemId) ?>">
+                        <article class="pos-pick-card" data-pick-item data-item-id="<?= e((string) $itemId) ?>" data-pick-keywords="<?= e(strtolower(trim($itemName . ' ' . $itemCode))) ?>">
                             <label class="pos-pick-select">
                                 <input type="checkbox" class="pos-pick-check" data-pick-check>
                                 <span>Pilih</span>
@@ -494,6 +519,52 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
 <?= raw(view('partials/shared/toast')) ?>
 <?= raw(helper_toast_script()) ?>
 <?= raw(module_script('Dashboard/js/dashboard.js')) ?>
+<style>
+    .pos-pick-search .pos-pick-search-box {
+        position: relative;
+    }
+
+    .pos-pick-search .pos-pick-search-input {
+        padding-left: 38px;
+    }
+
+    .pos-pick-search .pos-pick-search-icon,
+    .pos-pick-search .pos-pick-search-loading {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+    }
+
+    .pos-pick-search .pos-pick-search-icon {
+        color: var(--text-secondary);
+        font-size: 14px;
+        pointer-events: none;
+    }
+
+    .pos-pick-search .pos-pick-search-loading {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    .pos-pick-search.is-loading .pos-pick-search-icon {
+        display: none;
+    }
+
+    .pos-pick-search.is-loading .pos-pick-search-loading {
+        display: inline-flex !important;
+    }
+
+    .pos-pick-search.is-loading .pos-pick-search-input {
+        padding-left: 112px;
+    }
+</style>
 <script src="<?= e(base_url('assets/vendor/jquery/jquery-3.7.1.min.js')) ?>"></script>
 <script src="<?= e(base_url('assets/vendor/datatables/jquery.dataTables.min.js')) ?>"></script>
 <script src="<?= e(base_url('assets/vendor/datatables/dataTables.bootstrap5.min.js')) ?>"></script>
@@ -504,10 +575,48 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
         var poCanManage = <?= json_encode((bool) ($canManagePo ?? false), JSON_UNESCAPED_UNICODE) ?>;
         var poRowsMap = {};
         var poTable = null;
+        var purchaseHistoryLoaded = false;
 
         function formatRp(n) {
             n = parseInt(n, 10) || 0;
             return 'Rp ' + n.toLocaleString('id-ID');
+        }
+
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatDateLabel(raw) {
+            var txt = String(raw || '').trim();
+            if (!txt) return '-';
+            var d = new Date(txt + 'T00:00:00');
+            if (Number.isNaN(d.getTime())) return txt;
+            return d.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        function formatDateTimeLabel(raw) {
+            var txt = String(raw || '').trim();
+            if (!txt) return '-';
+            var normalized = txt.replace(' ', 'T');
+            var d = new Date(normalized);
+            if (Number.isNaN(d.getTime())) return txt;
+            return d.toLocaleString('id-ID', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         }
 
         var toastCfg = {
@@ -585,7 +694,9 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
         }
 
         function setPurchaseTab(tab) {
-            var next = tab === 'po' ? 'po' : 'pembelian';
+            var next = 'pembelian';
+            if (tab === 'po') next = 'po';
+            if (tab === 'history') next = 'history';
             document.querySelectorAll('[data-purchase-tab]').forEach(function(btn) {
                 btn.classList.toggle('is-active', btn.getAttribute('data-purchase-tab') === next);
             });
@@ -594,6 +705,68 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
             });
             if (next === 'po') {
                 initPoTable();
+                return;
+            }
+            if (next === 'history' && !purchaseHistoryLoaded) {
+                loadPurchaseHistory(true);
+            }
+        }
+
+        function renderPurchaseHistory(payload) {
+            var container = document.getElementById('purchaseHistoryContainer');
+            if (!container) return;
+            var groups = payload && Array.isArray(payload.groups) ? payload.groups : [];
+            var totalTrx = payload && payload.total_transactions ? parseInt(payload.total_transactions, 10) || 0 : 0;
+            var periodLabel = payload && payload.period_label ? String(payload.period_label) : '';
+            var totalNominal = payload && payload.total_nominal ? parseInt(payload.total_nominal, 10) || 0 : 0;
+            var summaryHtml = '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">' +
+                '<span class="sbadge scc border rounded-4 small">' + '<i class="bi bi-cart-check"></i> ' + totalTrx + ' Trx <i class="bi bi-calendar-check"></i> ' + escapeHtml(periodLabel || 'Bulan Ini') + '</span>' +
+                '<span class="sbadge scc border rounded-4 small">' + 'Total: ' + escapeHtml(formatRp(totalNominal)) + '</span>' +
+                '</div>';
+            if (!Array.isArray(groups) || groups.length === 0) {
+                container.innerHTML = summaryHtml + '<div class="text-muted small">Belum ada histori pembelian berhasil.</div>';
+                return;
+            }
+            var allRows = [];
+            groups.forEach(function(group) {
+                var rows = Array.isArray(group.rows) ? group.rows : [];
+                rows.forEach(function(row) {
+                    allRows.push(row);
+                });
+            });
+            var tableRows = allRows.map(function(row, idx) {
+                return '<tr>' +
+                    '<td>' + (idx + 1) + '</td>' +
+                    '<td><strong>' + escapeHtml(String(row.no_trx || '-')) + '</strong><br><span class="small text-muted">' + escapeHtml(formatDateTimeLabel(row.created_at || row.tanggal_input || '')) + '</span></td>' +
+                    '<td>' + escapeHtml(String(row.nm_supplier || 'Supplier Umum')) + '</td>' +
+                    '<td>' + escapeHtml(String(row.kasir || '-')) + '</td>' +
+                    '<td class="text-center">' + escapeHtml(String(row.jumlah || 0)) + '</td>' +
+                    '<td class="text-end">' + formatRp(row.total || 0) + '</td>' +
+                    '</tr>';
+            }).join('');
+            container.innerHTML = summaryHtml +
+                '<div class="table-responsive" style="overflow-x:auto;">' +
+                '<table class="dtable w-100">' +
+                '<thead><tr><th style="width:56px;">No</th><th>No.Transaksi</th><th>Supplier</th><th>Petugas</th><th style="width:80px;">Qty</th><th style="width:130px;">Total</th></tr></thead>' +
+                '<tbody>' + tableRows + '</tbody>' +
+                '</table></div>';
+        }
+
+        async function loadPurchaseHistory(force) {
+            var container = document.getElementById('purchaseHistoryContainer');
+            if (!container) return;
+            if (!force && purchaseHistoryLoaded) return;
+            container.innerHTML = '<div class="text-muted small"><i class="bi bi-arrow-repeat spin-icon"></i> Memuat histori...</div>';
+            try {
+                var resp = await fetch('/transaksi/pembelian/history/daily', {
+                    method: 'GET'
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var payload = await resp.json();
+                renderPurchaseHistory(payload || {});
+                purchaseHistoryLoaded = true;
+            } catch (e) {
+                container.innerHTML = '<div class="text-danger small">Gagal memuat histori pembelian.</div>';
             }
         }
 
@@ -703,6 +876,53 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
             modal.querySelectorAll('[data-pick-view]').forEach(function(btn) {
                 btn.classList.toggle('is-active', btn.getAttribute('data-pick-view') === view);
             });
+        }
+
+        function applyPickerSearch(modal, query) {
+            if (!modal) return;
+            var term = String(query || '').trim().toLowerCase();
+            var rows = Array.prototype.slice.call(modal.querySelectorAll('[data-pick-item]'));
+            rows.forEach(function(row) {
+                var keywords = String(row.getAttribute('data-pick-keywords') || '').toLowerCase();
+                var visible = term === '' || keywords.indexOf(term) !== -1;
+                row.hidden = !visible;
+                if (!visible) {
+                    var check = row.querySelector('[data-pick-check]');
+                    if (check) check.checked = false;
+                }
+            });
+            updatePickerState(modal);
+        }
+
+        function initPickerSearch(modal) {
+            if (!modal) return;
+            var wrap = modal.querySelector('[data-pick-search-wrap]');
+            if (!wrap) return;
+            var input = wrap.querySelector('[data-pick-search]');
+            var loading = wrap.querySelector('[data-pick-loading]');
+            if (!input || input._pickSearchInit) return;
+            input._pickSearchInit = true;
+            setSearchLoading(wrap, false, loading);
+
+            input.addEventListener('input', function() {
+                var self = this;
+                setSearchLoading(wrap, true, loading);
+                if (self._pickSearchTimer) {
+                    clearTimeout(self._pickSearchTimer);
+                }
+                self._pickSearchTimer = setTimeout(function() {
+                    applyPickerSearch(modal, self.value || '');
+                    setSearchLoading(wrap, false, loading);
+                }, 250);
+            });
+        }
+
+        function setSearchLoading(wrap, isLoading, loadingEl) {
+            if (!wrap) return;
+            wrap.classList.toggle('is-loading', !!isLoading);
+            if (loadingEl) {
+                loadingEl.style.display = isLoading ? 'inline-flex' : 'none';
+            }
         }
 
         function setBtnLoading(btn, on) {
@@ -893,6 +1113,13 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                 return;
             }
 
+            var historyRefreshBtn = e.target.closest('[data-purchase-history-refresh]');
+            if (historyRefreshBtn) {
+                e.preventDefault();
+                loadPurchaseHistory(true);
+                return;
+            }
+
             var poViewBtn = e.target.closest('.btn-po-view');
             if (poViewBtn) {
                 e.preventDefault();
@@ -1046,6 +1273,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
 
         document.querySelectorAll('.cm-bg').forEach(function(modal) {
             updatePickerState(modal);
+            initPickerSearch(modal);
         });
 
         function initPurchaseQtyForms() {

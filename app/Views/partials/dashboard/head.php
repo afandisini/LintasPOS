@@ -37,8 +37,8 @@
                     var modalId = openBtn.getAttribute('data-cm-open');
                     var modal = document.getElementById(modalId);
                     if (modal) {
-                        modal.style.display = 'flex';
                         modal.classList.add('show');
+                        document.body.style.overflow = 'hidden';
                     }
                 }
                 var closeBtn = e.target.closest('[data-cm-close]');
@@ -47,14 +47,18 @@
                     var modal = closeBtn.closest('[data-cm-bg]');
                     if (modal) {
                         modal.classList.remove('show');
-                        setTimeout(function() { modal.style.display = 'none'; }, 250);
+                        if (!document.querySelector('.cm-bg.show')) {
+                            document.body.style.overflow = '';
+                        }
                     }
                 }
             });
             document.addEventListener('click', function(e) {
                 if (e.target.hasAttribute('data-cm-bg') && e.target.classList.contains('show')) {
                     e.target.classList.remove('show');
-                    setTimeout(function() { e.target.style.display = 'none'; }, 250);
+                    if (!document.querySelector('.cm-bg.show')) {
+                        document.body.style.overflow = '';
+                    }
                 }
             });
         })();

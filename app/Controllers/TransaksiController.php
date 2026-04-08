@@ -37,7 +37,7 @@ class TransaksiController
         }
 
         $title = menu_generator_title_by_route('transaksi', 'Penjualan');
-        $pageTitle = $title === 'Transaksi' ? 'Penjualan' : ($title . ' - Penjualan');
+        $pageTitle = $title === 'Transaksi' ? 'Penjualan' : ($title ?? 'Penjualan');
         $payload = [
             'cartItems' => [],
             'barangOptions' => [],
@@ -48,7 +48,13 @@ class TransaksiController
             'holdRows' => [],
             'summary' => ['qty' => 0, 'subtotal' => 0, 'diskon' => 0, 'grand_total' => 0],
             'activeHoldId' => (int) ($_SESSION['penjualan_active_hold_id'] ?? 0),
+            'lastReceipt' => [],
         ];
+
+        if (is_array($_SESSION['penjualan_last_receipt'] ?? null)) {
+            $payload['lastReceipt'] = $_SESSION['penjualan_last_receipt'];
+            unset($_SESSION['penjualan_last_receipt']);
+        }
 
         try {
             $pdo = Database::connection();
@@ -107,21 +113,30 @@ class TransaksiController
                 throw new RuntimeException('Item tidak ditemukan.');
             }
 
-            // Cek diskon aktif untuk barang
+            // Cek diskon aktif untuk barang (jangan sampai blokir add-to-cart jika skema diskon berbeda)
             $diskonAktif = 0;
             if ($itemType === 'barang') {
-                $today = date('Y-m-d');
-                $stmtD = $pdo->prepare(
-                    'SELECT diskon FROM diskon
-                     WHERE deleted_at IS NULL AND barang_id = :barang_id
-                       AND (tgl_start IS NULL OR tgl_start <= :today)
-                       AND (tgl_end IS NULL OR tgl_end >= :today)
-                     ORDER BY id DESC LIMIT 1'
-                );
-                $stmtD->execute(['barang_id' => $itemId, 'today' => $today]);
-                $diskonRow = $stmtD->fetch(PDO::FETCH_ASSOC);
-                if (is_array($diskonRow)) {
-                    $diskonAktif = max(0, (int) ($diskonRow['diskon'] ?? 0));
+                try {
+                    $today = date('Y-m-d');
+                    $barangLookup = (string) ($item['code'] ?? '');
+                    if ($barangLookup === '') {
+                        $barangLookup = (string) $itemId;
+                    }
+
+                    $stmtD = $pdo->prepare(
+                        'SELECT diskon FROM diskon
+                         WHERE deleted_at IS NULL AND barang_id = :barang_id
+                           AND (tgl_start IS NULL OR tgl_start <= :today)
+                           AND (tgl_end IS NULL OR tgl_end >= :today)
+                         ORDER BY id DESC LIMIT 1'
+                    );
+                    $stmtD->execute(['barang_id' => $barangLookup, 'today' => $today]);
+                    $diskonRow = $stmtD->fetch(PDO::FETCH_ASSOC);
+                    if (is_array($diskonRow)) {
+                        $diskonAktif = max(0, (int) ($diskonRow['diskon'] ?? 0));
+                    }
+                } catch (Throwable) {
+                    $diskonAktif = 0;
                 }
             }
 
@@ -649,6 +664,32 @@ class TransaksiController
                 toast_add('Penjualan tersimpan, namun mutasi keuangan gagal.', 'warning');
             }
 
+            $pelangganNama = 'Umum / Non Member';
+            if ($idPelanggan > 0) {
+                $stmtPelanggan = $pdo->prepare('SELECT nama_pelanggan FROM pelanggan WHERE id = :id LIMIT 1');
+                $stmtPelanggan->execute(['id' => $idPelanggan]);
+                $rowPelanggan = $stmtPelanggan->fetch(PDO::FETCH_ASSOC);
+                if (is_array($rowPelanggan)) {
+                    $namaDb = trim((string) ($rowPelanggan['nama_pelanggan'] ?? ''));
+                    if ($namaDb !== '') {
+                        $pelangganNama = $namaDb;
+                    }
+                }
+            }
+
+            $_SESSION['penjualan_last_receipt'] = [
+                'no_trx' => $noTrx,
+                'tanggal' => date('Y-m-d H:i:s'),
+                'kasir' => (string) ($_SESSION['auth']['name'] ?? $_SESSION['auth']['username'] ?? 'Kasir'),
+                'pelanggan' => $pelangganNama,
+                'payment_method' => $paymentMethod,
+                'total' => $grandTotal,
+                'bayar' => $bayar,
+                'kembalian' => max(0, $bayar - $grandTotal),
+                'keterangan' => $keterangan,
+                'items' => $normalized,
+            ];
+
             toast_add('Checkout berhasil. No transaksi: ' . $noTrx . '.', 'success');
         } catch (Throwable $e) {
             if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
@@ -669,7 +710,7 @@ class TransaksiController
         }
 
         $title = menu_generator_title_by_route('transaksi', 'Pembelian');
-        $pageTitle = $title === 'Transaksi' ? 'Pembelian' : ($title . ' - Pembelian');
+        $pageTitle = $title === 'Transaksi' ? 'Pembelian' : ($title ?? 'Pembelian');
         $payload = [
             'cartItems' => [],
             'barangOptions' => [],
@@ -1166,9 +1207,9 @@ class TransaksiController
             if ($saldoKas < $totalPo) {
                 throw new RuntimeException(
                     'Saldo kas tidak mencukupi untuk approve PO ini. '
-                    . 'Saldo saat ini: Rp ' . number_format($saldoKas, 0, ',', '.') . ', '
-                    . 'dibutuhkan: Rp ' . number_format($totalPo, 0, ',', '.') . '. '
-                    . 'Tambah modal/kas terlebih dahulu.'
+                        . 'Saldo saat ini: Rp ' . number_format($saldoKas, 0, ',', '.') . ', '
+                        . 'dibutuhkan: Rp ' . number_format($totalPo, 0, ',', '.') . '. '
+                        . 'Tambah modal/kas terlebih dahulu.'
                 );
             }
 
@@ -1440,8 +1481,8 @@ class TransaksiController
                 $totalFmt = 'Rp ' . number_format($grandTotal, 0, ',', '.');
                 toast_add(
                     'Transaksi dibuat sebagai PO (' . $noTrx . '). '
-                    . 'Saldo kas ' . $saldoFmt . ' tidak mencukupi kebutuhan ' . $totalFmt . '. '
-                    . 'Stok belum ditambah - tunggu approval PO.',
+                        . 'Saldo kas ' . $saldoFmt . ' tidak mencukupi kebutuhan ' . $totalFmt . '. '
+                        . 'Stok belum ditambah - tunggu approval PO.',
                     'warning'
                 );
             } else {
@@ -1455,6 +1496,194 @@ class TransaksiController
         }
 
         return Response::redirect('/transaksi/pembelian');
+    }
+
+    public function salesHistoryDaily(Request $request): Response
+    {
+        $guard = $this->guardPenjualan();
+        if ($guard !== null) {
+            return Response::json(['error' => 'Akses ditolak.'], 403);
+        }
+
+        try {
+            $pdo = Database::connection();
+            $today = date('Y-m-d');
+
+            $sql = 'SELECT p.id, p.no_trx, p.tanggal_input, p.created_at, p.total, p.bayar, p.payment_method, p.status_bayar,
+                        p.id_pelanggan, COALESCE(pl.nama_pelanggan, \'Umum / Non Member\') AS pelanggan,
+                        COALESCE(u.name, u.user, \'Kasir\') AS kasir
+                    FROM penjualan p
+                    LEFT JOIN pelanggan pl ON pl.id = p.id_pelanggan
+                    LEFT JOIN users u ON u.id = p.id_member
+                    WHERE p.tanggal_input = :today
+                    ORDER BY p.tanggal_input DESC, p.id DESC';
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(['today' => $today]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (!is_array($rows)) {
+                $rows = [];
+            }
+
+            $grouped = [];
+            $totalNominal = 0;
+            foreach ($rows as $row) {
+                $tanggal = trim((string) ($row['tanggal_input'] ?? ''));
+                if ($tanggal === '') {
+                    $tanggal = date('Y-m-d');
+                }
+                if (!isset($grouped[$tanggal])) {
+                    $grouped[$tanggal] = [
+                        'date' => $tanggal,
+                        'label' => date('d M Y', strtotime($tanggal)),
+                        'rows' => [],
+                    ];
+                }
+                $grouped[$tanggal]['rows'][] = [
+                    'id' => (int) ($row['id'] ?? 0),
+                    'no_trx' => (string) ($row['no_trx'] ?? ''),
+                    'tanggal_input' => $tanggal,
+                    'created_at' => (string) ($row['created_at'] ?? ''),
+                    'pelanggan' => (string) ($row['pelanggan'] ?? 'Umum / Non Member'),
+                    'kasir' => (string) ($row['kasir'] ?? 'Kasir'),
+                    'payment_method' => (string) ($row['payment_method'] ?? ''),
+                    'status_bayar' => (string) ($row['status_bayar'] ?? ''),
+                    'total' => max(0, (int) ($row['total'] ?? 0)),
+                    'bayar' => max(0, (int) ($row['bayar'] ?? 0)),
+                ];
+                $totalNominal += max(0, (int) ($row['total'] ?? 0));
+            }
+
+            return Response::json([
+                'scope' => 'today',
+                'period_label' => date('d M Y', strtotime($today)),
+                'total_transactions' => count($rows),
+                'total_nominal' => $totalNominal,
+                'groups' => array_values($grouped),
+            ]);
+        } catch (Throwable) {
+            return Response::json([
+                'scope' => 'today',
+                'period_label' => date('d M Y'),
+                'total_transactions' => 0,
+                'total_nominal' => 0,
+                'groups' => [],
+                'error' => 'Gagal memuat histori penjualan.',
+            ], 500);
+        }
+    }
+
+    public function salesReceipt(Request $request): Response
+    {
+        $guard = $this->guardPenjualan();
+        if ($guard !== null) {
+            return Response::json(['error' => 'Akses ditolak.'], 403);
+        }
+
+        $noTrx = trim((string) $request->input('no_trx', ''));
+        if ($noTrx === '') {
+            return Response::json(['error' => 'No transaksi wajib diisi.'], 422);
+        }
+
+        try {
+            $pdo = Database::connection();
+            $receipt = $this->buildSalesReceiptByNoTrx($pdo, $noTrx);
+            if ($receipt === null) {
+                return Response::json(['error' => 'Data transaksi tidak ditemukan.'], 404);
+            }
+
+            return Response::json([
+                'success' => true,
+                'data' => $receipt,
+            ]);
+        } catch (Throwable) {
+            return Response::json(['error' => 'Gagal memuat data nota.'], 500);
+        }
+    }
+
+    public function purchaseHistoryDaily(Request $request): Response
+    {
+        $guard = $this->guardPembelian();
+        if ($guard !== null) {
+            return Response::json(['error' => 'Akses ditolak.'], 403);
+        }
+
+        try {
+            $pdo = Database::connection();
+            $monthStart = date('Y-m-01');
+            $monthEnd = date('Y-m-t');
+            $hasPoStatus = $this->columnExists($pdo, 'pembelian', 'po_status');
+            $hasPoDeletedAt = $this->columnExists($pdo, 'pembelian', 'po_deleted_at');
+
+            $where = ['p.status_bayar = \'Lunas\'', 'p.tanggal_input >= :month_start', 'p.tanggal_input <= :month_end'];
+            if ($hasPoDeletedAt) {
+                $where[] = 'p.po_deleted_at IS NULL';
+            }
+            if ($hasPoStatus) {
+                $where[] = '(COALESCE(p.po_status, \'\') = \'\' OR p.po_status = \'diterima\')';
+            }
+
+            $sql = 'SELECT p.id, p.no_trx, p.nm_supplier, p.beli, p.jumlah, p.status_bayar, p.keterangan, p.tanggal_input, p.created_at,
+                        COALESCE(u.name, u.user, \'Kasir\') AS kasir'
+                . ($hasPoStatus ? ', p.po_status' : ', \'\' AS po_status')
+                . ' FROM pembelian p
+                    LEFT JOIN users u ON u.id = p.id_member
+                    WHERE ' . implode(' AND ', $where) . '
+                    ORDER BY p.tanggal_input DESC, p.id DESC';
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(['month_start' => $monthStart, 'month_end' => $monthEnd]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (!is_array($rows)) {
+                $rows = [];
+            }
+
+            $grouped = [];
+            $totalNominal = 0;
+            foreach ($rows as $row) {
+                $tanggal = trim((string) ($row['tanggal_input'] ?? ''));
+                if ($tanggal === '') {
+                    $tanggal = date('Y-m-d');
+                }
+                if (!isset($grouped[$tanggal])) {
+                    $grouped[$tanggal] = [
+                        'date' => $tanggal,
+                        'label' => date('d M Y', strtotime($tanggal)),
+                        'rows' => [],
+                    ];
+                }
+                $grouped[$tanggal]['rows'][] = [
+                    'id' => (int) ($row['id'] ?? 0),
+                    'no_trx' => (string) ($row['no_trx'] ?? ''),
+                    'tanggal_input' => $tanggal,
+                    'created_at' => (string) ($row['created_at'] ?? ''),
+                    'nm_supplier' => (string) ($row['nm_supplier'] ?? 'Supplier Umum'),
+                    'kasir' => (string) ($row['kasir'] ?? 'Kasir'),
+                    'status_bayar' => (string) ($row['status_bayar'] ?? ''),
+                    'po_status' => (string) ($row['po_status'] ?? ''),
+                    'jumlah' => max(0, (int) ($row['jumlah'] ?? 0)),
+                    'total' => max(0, (int) ($row['beli'] ?? 0)),
+                    'keterangan' => (string) ($row['keterangan'] ?? ''),
+                ];
+                $totalNominal += max(0, (int) ($row['beli'] ?? 0));
+            }
+
+            return Response::json([
+                'scope' => 'month',
+                'period_label' => date('F Y'),
+                'total_transactions' => count($rows),
+                'total_nominal' => $totalNominal,
+                'groups' => array_values($grouped),
+            ]);
+        } catch (Throwable) {
+            return Response::json([
+                'scope' => 'month',
+                'period_label' => date('F Y'),
+                'total_transactions' => 0,
+                'total_nominal' => 0,
+                'groups' => [],
+                'error' => 'Gagal memuat histori pembelian.',
+            ], 500);
+        }
     }
 
     /**
@@ -1851,5 +2080,68 @@ class TransaksiController
             $seq = ((int) ($m[1] ?? 0)) + 1;
         }
         return $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * @return array<string,mixed>|null
+     */
+    private function buildSalesReceiptByNoTrx(PDO $pdo, string $noTrx): ?array
+    {
+        $stmt = $pdo->prepare(
+            'SELECT p.no_trx, p.tanggal_input, p.created_at, p.payment_method, p.total, p.bayar, p.keterangan,
+                COALESCE(pl.nama_pelanggan, \'Umum / Non Member\') AS pelanggan,
+                COALESCE(u.name, u.user, \'Kasir\') AS kasir
+            FROM penjualan p
+            LEFT JOIN pelanggan pl ON pl.id = p.id_pelanggan
+            LEFT JOIN users u ON u.id = p.id_member
+            WHERE p.no_trx = :no_trx
+            LIMIT 1'
+        );
+        $stmt->execute(['no_trx' => $noTrx]);
+        $head = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($head)) {
+            return null;
+        }
+
+        $stmtItems = $pdo->prepare(
+            'SELECT nama_barang, qty, jual, diskon, total
+            FROM penjualan_detail
+            WHERE no_trx = :no_trx
+            ORDER BY id ASC'
+        );
+        $stmtItems->execute(['no_trx' => $noTrx]);
+        $rows = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+        $items = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $items[] = [
+                    'name' => (string) ($row['nama_barang'] ?? '-'),
+                    'qty' => max(0, (int) ($row['qty'] ?? 0)),
+                    'jual' => max(0, (int) ($row['jual'] ?? 0)),
+                    'diskon' => max(0, (int) ($row['diskon'] ?? 0)),
+                    'total' => max(0, (int) ($row['total'] ?? 0)),
+                ];
+            }
+        }
+
+        $createdAt = trim((string) ($head['created_at'] ?? ''));
+        $tanggalInput = trim((string) ($head['tanggal_input'] ?? ''));
+        $tanggal = $createdAt !== '' ? $createdAt : $tanggalInput;
+
+        $total = max(0, (int) ($head['total'] ?? 0));
+        $bayar = max(0, (int) ($head['bayar'] ?? 0));
+
+        return [
+            'no_trx' => (string) ($head['no_trx'] ?? ''),
+            'tanggal' => $tanggal,
+            'kasir' => (string) ($head['kasir'] ?? 'Kasir'),
+            'pelanggan' => (string) ($head['pelanggan'] ?? 'Umum / Non Member'),
+            'payment_method' => (string) ($head['payment_method'] ?? ''),
+            'total' => $total,
+            'bayar' => $bayar,
+            'kembalian' => max(0, $bayar - $total),
+            'keterangan' => (string) ($head['keterangan'] ?? ''),
+            'items' => $items,
+        ];
     }
 }

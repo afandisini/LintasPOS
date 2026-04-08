@@ -40,6 +40,8 @@ $router->post('/transaksi/penjualan/hold/resume', [TransaksiController::class, '
 $router->post('/transaksi/penjualan/hold/delete', [TransaksiController::class, 'deleteHold'])->withMiddleware(Authenticate::class);
 $router->post('/transaksi/penjualan/pelanggan/quick', [TransaksiController::class, 'quickPelanggan'])->withMiddleware(Authenticate::class);
 $router->post('/transaksi/penjualan/checkout', [TransaksiController::class, 'checkout'])->withMiddleware(Authenticate::class);
+$router->get('/transaksi/penjualan/history/daily', [TransaksiController::class, 'salesHistoryDaily'])->withMiddleware(Authenticate::class);
+$router->get('/transaksi/penjualan/receipt', [TransaksiController::class, 'salesReceipt'])->withMiddleware(Authenticate::class);
 $router->get('/transaksi/pembelian', [TransaksiController::class, 'pembelian'])->withMiddleware(Authenticate::class);
 $router->post('/transaksi/pembelian/cart/add', [TransaksiController::class, 'addPurchaseCartItem'])->withMiddleware(Authenticate::class);
 $router->post('/transaksi/pembelian/cart/update', [TransaksiController::class, 'updatePurchaseCartItem'])->withMiddleware(Authenticate::class);
@@ -51,6 +53,7 @@ $router->get('/transaksi/pembelian/po/datatable', [TransaksiController::class, '
 $router->post('/transaksi/pembelian/po/update', [TransaksiController::class, 'updatePurchasePo'])->withMiddleware(Authenticate::class);
 $router->post('/transaksi/pembelian/po/delete', [TransaksiController::class, 'deletePurchasePo'])->withMiddleware(Authenticate::class);
 $router->post('/transaksi/pembelian/checkout', [TransaksiController::class, 'checkoutPembelian'])->withMiddleware(Authenticate::class);
+$router->get('/transaksi/pembelian/history/daily', [TransaksiController::class, 'purchaseHistoryDaily'])->withMiddleware(Authenticate::class);
 $router->get('/keuangan/input', [KeuanganController::class, 'input'])->withMiddleware(Authenticate::class);
 $router->post('/keuangan/input', [KeuanganController::class, 'input'])->withMiddleware(Authenticate::class);
 $router->get('/keuangan/input/datatable', [KeuanganController::class, 'datatable'])->withMiddleware(Authenticate::class);
@@ -75,12 +78,28 @@ $router->post('/menu-generator/scan-table', [MenuGeneratorController::class, 'sc
 $router->post('/menu-generator/store', [MenuGeneratorController::class, 'store'])->withMiddleware(Authenticate::class);
 $router->get('/menu-generator/edit', [MenuGeneratorController::class, 'edit'])->withMiddleware(Authenticate::class);
 $router->post('/menu-generator/update', [MenuGeneratorController::class, 'update'])->withMiddleware(Authenticate::class);
+$router->post('/menu-generator/menu-order', [MenuGeneratorController::class, 'updateMenuOrder'])->withMiddleware(Authenticate::class);
 $router->post('/menu-generator/generate', [MenuGeneratorController::class, 'generate'])->withMiddleware(Authenticate::class);
 $router->post('/menu-generator/delete', [MenuGeneratorController::class, 'delete'])->withMiddleware(Authenticate::class);
 $router->post('/menu-generator/delete-generated', [MenuGeneratorController::class, 'deleteGenerated'])->withMiddleware(Authenticate::class);
 
 // [MenuGenerator:Start]
 // Auto-generated routes from menu_generator (status=generated).
+$router->get('/transaksi/penjualan', [\App\Controllers\TransaksiController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/transaksi/penjualan/datatable', [\App\Controllers\TransaksiController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/transaksi/penjualan', [\App\Controllers\TransaksiController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/transaksi/penjualan/{id}/update', [\App\Controllers\TransaksiController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/transaksi/penjualan/{id}/delete', [\App\Controllers\TransaksiController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/transaksi/pembelian', [\App\Controllers\TransaksiController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/transaksi/pembelian/datatable', [\App\Controllers\TransaksiController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/transaksi/pembelian', [\App\Controllers\TransaksiController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/transaksi/pembelian/{id}/update', [\App\Controllers\TransaksiController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/transaksi/pembelian/{id}/delete', [\App\Controllers\TransaksiController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/keuangan/input', [\App\Controllers\KeuanganController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/keuangan/input/datatable', [\App\Controllers\KeuanganController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/keuangan/input', [\App\Controllers\KeuanganController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/keuangan/input/{id}/update', [\App\Controllers\KeuanganController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/keuangan/input/{id}/delete', [\App\Controllers\KeuanganController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
 $router->get('/kategori', [\App\Controllers\KategoriController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
 $router->get('/kategori/datatable', [\App\Controllers\KategoriController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
 $router->post('/kategori', [\App\Controllers\KategoriController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
@@ -116,6 +135,11 @@ $router->get('/diskon/datatable', [\App\Controllers\DiskonController::class, 'da
 $router->post('/diskon', [\App\Controllers\DiskonController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
 $router->post('/diskon/{id}/update', [\App\Controllers\DiskonController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
 $router->post('/diskon/{id}/delete', [\App\Controllers\DiskonController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/laporan', [\App\Controllers\LaporanController::class, 'index'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->get('/laporan/datatable', [\App\Controllers\LaporanController::class, 'datatable'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/laporan', [\App\Controllers\LaporanController::class, 'store'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/laporan/{id}/update', [\App\Controllers\LaporanController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
+$router->post('/laporan/{id}/delete', [\App\Controllers\LaporanController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
 // [MenuGenerator:End]
 
 $router->post('/logout', [AuthController::class, 'logout'])->withMiddleware(Authenticate::class);

@@ -8,6 +8,18 @@ use Throwable;
 
 class MenuGeneratorService
 {
+    /**
+     * @var array<int, string>
+     */
+    private const SIDEBAR_MANUAL_MODULE_SLUGS = [
+        'transaksi',
+        'transaksi-penjualan',
+        'transaksi-pembelian',
+        'keuangan',
+        'keuangan-input',
+        'laporan',
+    ];
+
     private MenuGeneratorFieldDetectorService $fieldDetector;
     private MenuGeneratorFileService $fileService;
     private MenuGeneratorCleanupService $cleanupService;
@@ -397,6 +409,114 @@ class MenuGeneratorService
         }
         sort($tables);
         return $tables;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function listSidebarOrderItems(): array
+    {
+        $pdo = Database::connection();
+        $manualSlugs = self::SIDEBAR_MANUAL_MODULE_SLUGS;
+        $slugPlaceholders = implode(', ', array_fill(0, count($manualSlugs), '?'));
+
+        $sql = 'SELECT id, module_name, module_slug, menu_title, menu_icon, route_prefix, parent_menu_key, menu_order, status '
+            . 'FROM menu_generator '
+            . 'WHERE deleted_at IS NULL AND (status = \'generated\' OR module_slug IN (' . $slugPlaceholders . ')) '
+            . 'ORDER BY menu_order ASC, id ASC';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($manualSlugs);
+        $rows = $stmt->fetchAll();
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $id = (int) ($row['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $result[] = [
+                'id' => $id,
+                'module_name' => (string) ($row['module_name'] ?? ''),
+                'module_slug' => (string) ($row['module_slug'] ?? ''),
+                'menu_title' => (string) ($row['menu_title'] ?? ''),
+                'menu_icon' => (string) ($row['menu_icon'] ?? ''),
+                'route_prefix' => trim((string) ($row['route_prefix'] ?? ''), '/'),
+                'parent_menu_key' => (string) ($row['parent_menu_key'] ?? ''),
+                'menu_order' => (int) ($row['menu_order'] ?? 0),
+                'status' => (string) ($row['status'] ?? 'draft'),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<int, int> $orderedIds
+     */
+    public function updateSidebarMenuOrder(array $orderedIds, int $actorId): void
+    {
+        $items = $this->listSidebarOrderItems();
+        if ($items === []) {
+            throw new \RuntimeException('Data menu sidebar tidak ditemukan.');
+        }
+
+        $knownById = [];
+        foreach ($items as $item) {
+            $id = (int) ($item['id'] ?? 0);
+            if ($id > 0) {
+                $knownById[$id] = true;
+            }
+        }
+        if ($knownById === []) {
+            throw new \RuntimeException('Data menu sidebar tidak valid.');
+        }
+
+        $uniqueOrdered = [];
+        foreach ($orderedIds as $rawId) {
+            $id = (int) $rawId;
+            if ($id <= 0 || !isset($knownById[$id])) {
+                continue;
+            }
+            if (!in_array($id, $uniqueOrdered, true)) {
+                $uniqueOrdered[] = $id;
+            }
+        }
+
+        foreach (array_keys($knownById) as $id) {
+            if (!in_array($id, $uniqueOrdered, true)) {
+                $uniqueOrdered[] = $id;
+            }
+        }
+
+        $pdo = Database::connection();
+        $pdo->beginTransaction();
+        try {
+            $update = $pdo->prepare(
+                'UPDATE menu_generator SET menu_order = :menu_order, updated_by = :updated_by, updated_at = NOW() WHERE id = :id'
+            );
+
+            $order = 10;
+            foreach ($uniqueOrdered as $id) {
+                $update->execute([
+                    'menu_order' => $order,
+                    'updated_by' => $actorId > 0 ? $actorId : null,
+                    'id' => $id,
+                ]);
+                $order += 10;
+            }
+
+            $pdo->commit();
+            $this->syncGeneratedRoutesInWebFile();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 
     /**

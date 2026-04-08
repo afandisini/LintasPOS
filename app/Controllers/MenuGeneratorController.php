@@ -21,11 +21,23 @@ class MenuGeneratorController
     public function index(Request $request): Response
     {
         $auth = is_array($_SESSION['auth'] ?? null) ? $_SESSION['auth'] : [];
+        $activeTab = trim((string) $request->input('tab', 'config'));
+        if (!in_array($activeTab, ['config', 'menu-order'], true)) {
+            $activeTab = 'config';
+        }
+        $menuOrderItems = [];
+        try {
+            $menuOrderItems = $this->service->listSidebarOrderItems();
+        } catch (Throwable) {
+            // no-op
+        }
 
         $html = app()->view()->render('menu_generator/index', [
             'title' => 'Menu Generator',
             'auth' => $auth,
             'activeMenu' => 'menu-generator',
+            'activeTab' => $activeTab,
+            'menuOrderItems' => $menuOrderItems,
         ]);
 
         return Response::html($html);
@@ -218,6 +230,32 @@ class MenuGeneratorController
         }
 
         return Response::redirect('/menu-generator/edit?id=' . urlencode((string) $token));
+    }
+
+    public function updateMenuOrder(Request $request): Response
+    {
+        $actorId = (int) ($_SESSION['auth']['id'] ?? 0);
+        $orderRaw = trim((string) $request->input('order_json', '[]'));
+        $decoded = json_decode($orderRaw, true);
+        if (!is_array($decoded)) {
+            $decoded = [];
+        }
+
+        $orderedIds = [];
+        foreach ($decoded as $id) {
+            if (is_numeric($id)) {
+                $orderedIds[] = (int) $id;
+            }
+        }
+
+        try {
+            $this->service->updateSidebarMenuOrder($orderedIds, $actorId);
+            toast_add('Urutan menu sidebar berhasil diperbarui.', 'success');
+        } catch (Throwable $e) {
+            toast_add('Gagal memperbarui urutan menu: ' . $this->safeError($e), 'error');
+        }
+
+        return Response::redirect('/menu-generator?tab=menu-order');
     }
 
     private function safeError(Throwable $throwable): string
