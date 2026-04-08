@@ -117,24 +117,8 @@ class TransaksiController
             $diskonAktif = 0;
             if ($itemType === 'barang') {
                 try {
-                    $today = date('Y-m-d');
-                    $barangLookup = (string) ($item['code'] ?? '');
-                    if ($barangLookup === '') {
-                        $barangLookup = (string) $itemId;
-                    }
-
-                    $stmtD = $pdo->prepare(
-                        'SELECT diskon FROM diskon
-                         WHERE deleted_at IS NULL AND barang_id = :barang_id
-                           AND (tgl_start IS NULL OR tgl_start <= :today)
-                           AND (tgl_end IS NULL OR tgl_end >= :today)
-                         ORDER BY id DESC LIMIT 1'
-                    );
-                    $stmtD->execute(['barang_id' => $barangLookup, 'today' => $today]);
-                    $diskonRow = $stmtD->fetch(PDO::FETCH_ASSOC);
-                    if (is_array($diskonRow)) {
-                        $diskonAktif = max(0, (int) ($diskonRow['diskon'] ?? 0));
-                    }
+                    $barangCode = (string) ($item['code'] ?? '');
+                    $diskonAktif = $this->activeDiskonByBarangRef($pdo, $barangCode, $itemId);
                 } catch (Throwable) {
                     $diskonAktif = 0;
                 }
@@ -555,6 +539,11 @@ class TransaksiController
                     }
                     $jual = max(0, (int) ($barang['harga_jual'] ?? $jual));
                     $beli = max(0, (int) ($barang['harga_beli'] ?? $beli));
+                    $barangKode = trim((string) ($item['id_barang'] ?? ''));
+                    $diskonAktif = $this->activeDiskonByBarangRef($pdo, $barangKode, $refId);
+                    if ($diskonAktif > 0) {
+                        $diskon = $diskonAktif;
+                    }
                     $pdo->prepare('UPDATE barang SET stok = stok - :qty, updated_at = NOW() WHERE id = :id')->execute(['qty' => $qty, 'id' => $refId]);
                 } else {
                     $jasa = $this->findJasa($pdo, $refId);
@@ -1874,30 +1863,12 @@ class TransaksiController
             return [];
         }
 
-        // Inject diskon aktif per barang
-        $today = date('Y-m-d');
-        $diskonMap = [];
-        try {
-            $stmtD = $pdo->prepare(
-                'SELECT barang_id, diskon FROM diskon
-                 WHERE deleted_at IS NULL
-                   AND (tgl_start IS NULL OR tgl_start <= :today)
-                   AND (tgl_end IS NULL OR tgl_end >= :today)
-                 ORDER BY id DESC'
-            );
-            $stmtD->execute(['today' => $today]);
-            foreach ($stmtD->fetchAll(PDO::FETCH_ASSOC) as $d) {
-                $bid = (string) ($d['barang_id'] ?? '');
-                if ($bid !== '' && !isset($diskonMap[$bid])) {
-                    $diskonMap[$bid] = max(0, (int) ($d['diskon'] ?? 0));
-                }
-            }
-        } catch (Throwable) {
-        }
-
         foreach ($rows as &$row) {
-            $bid = (string) ($row['id'] ?? '');
-            $row['diskon_aktif'] = $diskonMap[$bid] ?? 0;
+            $row['diskon_aktif'] = $this->activeDiskonByBarangRef(
+                $pdo,
+                (string) ($row['id_barang'] ?? ''),
+                (int) ($row['id'] ?? 0)
+            );
             $row['harga_jual_diskon'] = max(0, (int) ($row['harga_jual'] ?? 0) - ($row['diskon_aktif']));
         }
         unset($row);
@@ -2080,6 +2051,46 @@ class TransaksiController
             $seq = ((int) ($m[1] ?? 0)) + 1;
         }
         return $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function activeDiskonByBarangRef(PDO $pdo, string $barangCode, int $barangId): int
+    {
+        $code = $this->normalizeBarangDiscountKey($barangCode);
+        $idRef = $barangId > 0 ? $this->normalizeBarangDiscountKey((string) $barangId) : '';
+        if ($code === '' && $idRef === '') {
+            return 0;
+        }
+        try {
+            $today = date('Y-m-d');
+            $sql = 'SELECT diskon FROM diskon
+                WHERE deleted_at IS NULL
+                  AND (tgl_start IS NULL OR tgl_start <= :today_start)
+                  AND (tgl_end IS NULL OR tgl_end >= :today_end)';
+            $bind = ['today_start' => $today, 'today_end' => $today];
+            if ($code !== '' && $idRef !== '') {
+                $sql .= ' AND (UPPER(TRIM(barang_id)) = :barang_code OR UPPER(TRIM(barang_id)) = :barang_id_ref)';
+                $bind['barang_code'] = $code;
+                $bind['barang_id_ref'] = $idRef;
+            } elseif ($code !== '') {
+                $sql .= ' AND UPPER(TRIM(barang_id)) = :barang_code';
+                $bind['barang_code'] = $code;
+            } else {
+                $sql .= ' AND UPPER(TRIM(barang_id)) = :barang_id_ref';
+                $bind['barang_id_ref'] = $idRef;
+            }
+            $sql .= ' ORDER BY id DESC LIMIT 1';
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($bind);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return is_array($row) ? max(0, (int) ($row['diskon'] ?? 0)) : 0;
+        } catch (Throwable) {
+            return 0;
+        }
+    }
+
+    private function normalizeBarangDiscountKey(string $value): string
+    {
+        return strtoupper(trim($value));
     }
 
     /**

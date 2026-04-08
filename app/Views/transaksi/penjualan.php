@@ -158,6 +158,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                                             $qty = max(1, (int) ((string) ($item['jumlah'] ?? '1')));
                                             $harga = max(0, (int) ((string) ($item['jual'] ?? '0')));
                                             $diskon = max(0, (int) ((string) ($item['diskon'] ?? '0')));
+                                            $hargaSetelahDiskon = max(0, $harga - $diskon);
                                             $lineTotal = max(0, ($harga - $diskon) * $qty);
                                             $itemType = (string) ($item['item_type'] ?? 'barang');
                                             ?>
@@ -173,7 +174,14 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                                                         <?php endif; ?>
                                                     </div>
                                                 </td>
-                                                <td style="text-align:right;font-size:13px;color:var(--text-secondary);"><?= e(format_currency_id($harga)) ?></td>
+                                                <td style="text-align:right;font-size:13px;color:var(--text-secondary);">
+                                                    <?php if ($diskon > 0): ?>
+                                                        <div style="text-decoration:line-through;opacity:.65;"><?= e(format_currency_id($harga)) ?></div>
+                                                        <div style="font-weight:700;color:var(--accent);"><?= e(format_currency_id($hargaSetelahDiskon)) ?></div>
+                                                    <?php else: ?>
+                                                        <?= e(format_currency_id($harga)) ?>
+                                                    <?php endif; ?>
+                                                </td>
                                                 <td style="text-align:center;">
                                                     <form method="post" action="/transaksi/penjualan/cart/update" class="pos-qty-form">
                                                         <?= raw(csrf_field()) ?>
@@ -623,6 +631,42 @@ if ((int) ($activeHoldId ?? 0) > 0) {
 <?= raw(module_script('Dashboard/js/dashboard.js')) ?>
 <?= raw(view('partials/dashboard/shell_close')) ?>
 <style>
+    .pos-diskon-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 3;
+        background: #fff1d6;
+        color: #c76a00;
+        border: 1px solid #ffd28a;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .pos-pick-price-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-top: 2px;
+    }
+
+    .pos-pick-price-strike {
+        color: #9a9a9a;
+        font-size: 12px;
+        text-decoration: line-through;
+        text-decoration-thickness: 1.5px;
+    }
+
+    .pos-pick-price-diskon {
+        color: var(--accent);
+        font-weight: 800;
+    }
+
     .pos-pick-search .pos-pick-search-box {
         position: relative;
     }
