@@ -63,6 +63,13 @@ class Response
         return new self('', $this->statusCode, $this->headers);
     }
 
+    public function withHeader(string $name, string $value): self
+    {
+        $headers = $this->headers;
+        $headers[$name] = $value;
+        return new self($this->content, $this->statusCode, $headers);
+    }
+
     public function statusCode(): int
     {
         return $this->statusCode;

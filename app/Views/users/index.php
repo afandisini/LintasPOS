@@ -73,13 +73,13 @@ $dataTablesHead = raw(
 
 <div class="cm-bg" id="cmAddUser" data-cm-bg>
     <div class="panel cm-box cm-box-lg" role="dialog" aria-modal="true" aria-labelledby="cmAddUserTitle">
-        <form method="post" action="<?= e(site_url('users')) ?>" autocomplete="off">
+        <form class="barang-modern-form" method="post" action="<?= e(site_url('users')) ?>" autocomplete="off">
             <?= raw(csrf_field()) ?>
             <div class="panel-head">
                 <span class="panel-title" id="cmAddUserTitle">Tambah Pengguna</span>
                 <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
-            <div class="panel-body">
+            <div class="panel-body barang-modern-body">
                 <div class="u-form-grid">
                     <div>
                         <label class="u-label">Nama *</label>
@@ -134,13 +134,13 @@ $dataTablesHead = raw(
 
 <div class="cm-bg" id="cmEditUser" data-cm-bg>
     <div class="panel cm-box cm-box-lg" role="dialog" aria-modal="true" aria-labelledby="cmEditUserTitle">
-        <form method="post" id="formEditUser" action="<?= e(site_url('users/0/update')) ?>" autocomplete="off">
+        <form class="barang-modern-form" method="post" id="formEditUser" action="<?= e(site_url('users/0/update')) ?>" autocomplete="off">
             <?= raw(csrf_field()) ?>
             <div class="panel-head">
                 <span class="panel-title" id="cmEditUserTitle">Edit Pengguna</span>
                 <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
-            <div class="panel-body">
+            <div class="panel-body barang-modern-body">
                 <div class="u-form-grid">
                     <div>
                         <label class="u-label">Nama *</label>

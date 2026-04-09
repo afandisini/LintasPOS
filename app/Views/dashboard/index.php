@@ -102,88 +102,59 @@
         </div>
         <div class="col-lg-4 anim">
             <div class="panel mb-3">
-                <div class="panel-head"><span class="panel-title">Aksi Cepat</span></div>
+                <div class="panel-head"><span class="panel-title">Akses Cepat</span></div>
                 <div class="panel-body">
                     <div class="qa-grid">
-                        <button class="qa-btn" type="button"><i class="bi bi-plus-circle-fill"></i><span>Tambah Produk</span></button>
-                        <button class="qa-btn" type="button"><i class="bi bi-cart-plus-fill"></i><span>Transaksi Baru</span></button>
-                        <button class="qa-btn" type="button"><i class="bi bi-download"></i><span>Unduh Laporan</span></button>
-                        <button class="qa-btn" type="button"><i class="bi bi-send-fill"></i><span>Kirim Reminder</span></button>
+                        <a class="qa-btn link-underline link-underline-opacity-0" href="<?= e(site_url('transaksi/penjualan')) ?>"><i class="bi bi-bag"></i><span>Penjualan</span></a>
+                        <a class="qa-btn link-underline link-underline-opacity-0" href="<?= e(site_url('transaksi/pembelian')) ?>"><i class="bi bi-cart-plus"></i><span>Pembelian</span></a>
+                        <a class="qa-btn link-underline link-underline-opacity-0" href="<?= e(site_url('barang')) ?>"><i class="bi bi-box-seam"></i><span>Barang</span></a>
+                        <a class="qa-btn link-underline link-underline-opacity-0" href="<?= e(site_url('jasa')) ?>"><i class="bi bi-wrench"></i><span>Jasa</span></a>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-lg-8 h-100 anim">
             <div class="anim" id="users-table">
-                <div class="panel">
+                <div class="panel h-100">
                     <div class="panel-head">
                         <span class="panel-title">Ringkasan Users</span>
-                        <span class="text-muted" style="font-size:12px">Role: <?= e((string) ($auth['role'] ?? '-')) ?></span>
+                        <span class="text-muted" style="font-size:12px"><i class="bi bi-person-badge"></i> <?= e((string) ($auth['role'] ?? '-')) ?></span>
                     </div>
                     <div class="panel-body">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <div class="mini-item"><span>Total User</span><strong><?= e(number_format((int) ($stats['users'] ?? 0))) ?></strong></div>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <div class="mini-item small"><span><i class="bi bi-people"></i></span><strong><?= e(number_format((int) ($stats['users'] ?? 0))) ?></strong></div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="mini-item"><span>Pelanggan</span><strong><?= e(number_format((int) ($stats['customers'] ?? 0))) ?></strong></div>
+                            <div class="col-md-6 mb-2">
+                                <div class="mini-item small"><span><i class="bi bi-person"></i></span><strong><?= e(number_format((int) ($stats['customers'] ?? 0))) ?></strong></div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="mini-item"><span>Barang</span><strong><?= e(number_format((int) ($stats['products'] ?? 0))) ?></strong></div>
+                            <div class="col-md-12 mb-2">
+                                <div class="mini-item small"><span><i class="bi bi-box-seam"></i></span><strong><?= e(number_format((int) ($stats['products'] ?? 0))) ?></strong></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="row g-3 mb-4">
-        <div class="col-lg-12 anim">
-            <div class="panel" id="recent-sales">
+        <div class="col-lg-8 anim">
+            <div class="panel h-100" id="recent-sales">
                 <div class="panel-head">
-                    <span class="panel-title">Transaksi Terbaru</span>
-                    <button class="panel-link" type="button">Realtime</button>
+                    <span class="panel-title">Transaksi</span>
+                    <div class="panel-link"><i class="bi bi-clock"></i> 8 Transaksi Terbaru</div>
                 </div>
-                <div class="panel-body">
-
-                    <div class="dt-wrap" style="overflow-x:auto">
-                        <table class="dtable">
-                            <thead>
-                                <tr>
-                                    <th>No Trx</th>
-                                    <th>Pelanggan</th>
-                                    <th>Metode</th>
-                                    <th>Tanggal</th>
-                                    <th>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if ($recent_sales === []): ?>
-                                    <tr>
-                                        <td colspan="5" class="text-muted">Belum ada data transaksi.</td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($recent_sales as $row): ?>
-                                        <?php
-                                        $metode = trim((string) ($row['payment_method'] ?? ''));
-                                        if ($metode === '') {
-                                            $metode = '-';
-                                        }
-                                        ?>
-                                        <tr>
-                                            <td class="fw-semibold"><?= e((string) ($row['no_trx'] ?? '-')) ?></td>
-                                            <td><?= e((string) ($row['pelanggan'] ?? '-')) ?></td>
-                                            <td>
-                                                <span class="sbadge inf"><span class="sd"></span><?= e($metode) ?></span>
-                                            </td>
-                                            <td style="font-size:12px;color:var(--text-secondary)"><?= e((string) ($row['tanggal_input'] ?? '-')) ?></td>
-                                            <td>Rp <?= e(number_format((int) ($row['total'] ?? 0), 0, ',', '.')) ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="panel-body" style="max-height:290px;overflow-y:auto">
+                    <?php if ($recent_sales === []): ?>
+                        <div class="text-muted small">Belum ada data transaksi.</div>
+                    <?php else: ?>
+                        <?php foreach ($recent_sales as $row): ?>
+                            <?php $metode = trim((string) ($row['payment_method'] ?? '')) ?: '-'; ?>
+                            <div class="act-item">
+                                <div class="act-dot" style="background:var(--accent)"></div>
+                                <div class="act-text">
+                                    <p><strong><?= e((string) ($row['no_trx'] ?? '-')) ?></strong> — <?= e((string) ($row['pelanggan'] ?? '-')) ?> <span class="sbadge inf small"><span class="sd"></span><?= e($metode) ?></span></p>
+                                    <span class="atime"><?= e((string) ($row['tanggal_input'] ?? '-')) ?> · Rp <?= e(number_format((int) ($row['total'] ?? 0), 0, ',', '.')) ?></span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

@@ -14,6 +14,21 @@ class MediaController
     public function show(Request $request): Response
     {
         $rawPath = (string) $request->input('path', '');
+        return $this->serveFile($rawPath, false);
+    }
+
+    public function showPublic(Request $request): Response
+    {
+        $rawPath = (string) $request->input('path', '');
+        $relative = ltrim(str_replace('\\', '/', trim($rawPath)), '/');
+        if (!str_starts_with($relative, 'filemanager/toko/')) {
+            return Response::html('Forbidden', 403);
+        }
+        return $this->serveFile($rawPath, true);
+    }
+
+    private function serveFile(string $rawPath, bool $skipAuth): Response
+    {
         $relative = ltrim(str_replace('\\', '/', trim($rawPath)), '/');
         if ($relative === '' || str_contains($relative, '..') || !str_starts_with($relative, 'filemanager/')) {
             return Response::html('Not Found', 404);

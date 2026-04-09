@@ -98,9 +98,17 @@
     }
 
     function resolveImagePreview(row, cfg) {
-        var displayName = getRowDisplayName(row);
-        var initials = getInitials(displayName);
         var displayColumns = Array.isArray(cfg.displayColumns) ? cfg.displayColumns : [];
+        var displayName = getRowDisplayName(row);
+        if (displayName === 'Tanpa Nama' || /^\d+$/.test(displayName)) {
+            for (var k = 0; k < displayColumns.length; k += 1) {
+                var fn = String((displayColumns[k] && displayColumns[k].name) || '').trim();
+                if (fn === '' || looksLikeImageFieldName(fn)) continue;
+                var candidate = stripTags(safeString(getDisplayValue(row, fn)));
+                if (candidate !== '-') { displayName = candidate; break; }
+            }
+        }
+        var initials = getInitials(displayName);
 
         for (var i = 0; i < displayColumns.length; i += 1) {
             var fieldName = String((displayColumns[i] && displayColumns[i].name) || '').trim();

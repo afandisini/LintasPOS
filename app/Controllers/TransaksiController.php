@@ -544,6 +544,10 @@ class TransaksiController
                     if ($diskonAktif > 0) {
                         $diskon = $diskonAktif;
                     }
+                    // Diskon tidak boleh melebihi harga jual
+                    if ($diskon > $jual) {
+                        $diskon = $jual;
+                    }
                     $pdo->prepare('UPDATE barang SET stok = stok - :qty, updated_at = NOW() WHERE id = :id')->execute(['qty' => $qty, 'id' => $refId]);
                 } else {
                     $jasa = $this->findJasa($pdo, $refId);

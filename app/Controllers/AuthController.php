@@ -118,15 +118,8 @@ class AuthController
 
     private function clientIp(): string
     {
-        $forwarded = (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '');
-        if ($forwarded !== '') {
-            $parts = explode(',', $forwarded);
-            $candidate = trim($parts[0]);
-            if ($candidate !== '') {
-                return $candidate;
-            }
-        }
-
+        // Gunakan REMOTE_ADDR langsung — tidak percaya X-Forwarded-For
+        // karena bisa di-spoof untuk bypass throttle.
         $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
         return $remote !== '' ? $remote : '127.0.0.1';
     }

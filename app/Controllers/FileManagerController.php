@@ -135,7 +135,19 @@ class FileManagerController
             return Response::redirect('/filemanager?module=' . urlencode($module) . '&ref=' . urlencode($refId));
         }
 
-        $blockedExtensions = ['php', 'phtml', 'phar', 'exe', 'sh', 'bat', 'cmd', 'js', 'com'];
+        $blockedExtensions = ['php', 'phtml', 'phar', 'exe', 'sh', 'bat', 'cmd', 'js', 'com', 'py', 'rb', 'pl', 'cgi', 'asp', 'aspx', 'jsp'];
+
+        // MIME whitelist: hanya izinkan tipe file yang aman
+        $allowedMimeTypes = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp',
+            'application/pdf',
+            'text/plain', 'text/csv',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/zip', 'application/x-zip-compressed',
+        ];
         $successCount = 0;
         $failedNames = [];
 
@@ -173,6 +185,15 @@ class FileManagerController
 
             $targetPath = $targetDir . DIRECTORY_SEPARATOR . $storedName;
             if (!move_uploaded_file($tmp, $targetPath)) {
+                $failedNames[] = $failedLabel;
+                continue;
+            }
+
+            // Validasi MIME server-side dengan finfo setelah file dipindah
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $detectedMime = (string) $finfo->file($targetPath);
+            if (!in_array($detectedMime, $allowedMimeTypes, true)) {
+                @unlink($targetPath);
                 $failedNames[] = $failedLabel;
                 continue;
             }

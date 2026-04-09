@@ -66,9 +66,11 @@ class AuthService
         }
 
         if ((string) ($user['active'] ?? '0') !== '1') {
+            // Pesan generik agar tidak bocorkan info akun nonaktif vs salah password
+            $this->recordFailure($throttle, $key, $now);
             return [
                 'ok' => false,
-                'message' => 'Akun nonaktif. Hubungi administrator.',
+                'message' => 'Kredensial tidak valid.',
                 'user' => null,
             ];
         }

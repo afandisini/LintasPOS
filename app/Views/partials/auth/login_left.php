@@ -4,7 +4,7 @@
 <section class="left">
     <div class="d-flex align-items-center justify-content-between">
         <div class="brand">
-            <div class="icon"><i class="{{icons}}"></i></div>
+            <div class="icon">{{brand_logo}}</div>
             <div class="title">{{nama_toko}}</div>
         </div>
         <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle theme">

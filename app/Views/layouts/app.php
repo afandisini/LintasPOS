@@ -22,8 +22,10 @@
 </head>
 <body>
   <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark mode">
-    <i class="bi bi-moon-stars-fill"></i>
-    <i class="bi bi-sun-fill"></i>
+    <span class="theme-toggle-track">
+      <i class="bi bi-moon-stars-fill theme-icon theme-icon-moon"></i>
+      <i class="bi bi-sun-fill theme-icon theme-icon-sun"></i>
+    </span>
   </button>
 
   <?= $content ?>
@@ -31,22 +33,24 @@
   <script defer src="<?= e(base_url('assets/vendor/bootstrap/bootstrap.bundle.min.js')) ?>"></script>
   <script>
     (function () {
-      const root = document.documentElement;
-      const key = 'aiti_theme';
-      const stored = localStorage.getItem(key);
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initial = stored || (prefersDark ? 'dark' : 'light');
-      root.setAttribute('data-theme', initial);
+      var root = document.documentElement;
+      var key = 'aiti_theme';
+      var stored = localStorage.getItem(key);
+      var prefersDark = !window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var initial = stored || (prefersDark ? 'dark' : 'light');
+      if (initial === 'light') root.setAttribute('data-theme', 'light');
 
-      const toggle = document.getElementById('themeToggle');
-      if (!toggle) {
-        return;
-      }
+      var toggle = document.getElementById('themeToggle');
+      if (!toggle) return;
 
       toggle.addEventListener('click', function () {
-        const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-        const next = current === 'dark' ? 'light' : 'dark';
-        root.setAttribute('data-theme', next);
+        var current = root.getAttribute('data-theme');
+        var next = current === 'light' ? 'dark' : 'light';
+        if (next === 'light') {
+          root.setAttribute('data-theme', 'light');
+        } else {
+          root.removeAttribute('data-theme');
+        }
         localStorage.setItem(key, next);
       });
     })();

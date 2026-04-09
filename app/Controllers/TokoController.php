@@ -23,6 +23,10 @@ class TokoController
             if ($hasIconsColumn) {
                 $select .= ', icons';
             }
+            $hasLogoModeColumn = $this->hasTokoLogoModeColumn($pdo);
+            if ($hasLogoModeColumn) {
+                $select .= ', logo_mode';
+            }
             $select .= ' FROM toko ORDER BY id ASC LIMIT 1';
             $stmt = $pdo->query($select);
             $row = $stmt->fetch();
@@ -43,6 +47,7 @@ class TokoController
                 'nama_pemilik' => (string) ($fallback['nama_pemilik'] ?? ''),
                 'logo' => null,
                 'icons' => (string) ($fallback['icons'] ?? ''),
+                'logo_mode' => (string) ($fallback['logo_mode'] ?? 'icon'),
             ];
         }
 
@@ -65,6 +70,10 @@ class TokoController
         $telepon = trim((string) $request->input('tlp', ''));
         $namaPemilik = trim((string) $request->input('nama_pemilik', ''));
         $iconClass = trim((string) $request->input('icons', ''));
+        $logoMode = trim((string) $request->input('logo_mode', 'icon'));
+        if (!in_array($logoMode, ['gambar', 'icon'], true)) {
+            $logoMode = 'icon';
+        }
         $auth = is_array($_SESSION['auth'] ?? null) ? $_SESSION['auth'] : [];
         $authId = (int) ($auth['id'] ?? 0);
 
@@ -98,6 +107,7 @@ class TokoController
         try {
             $pdo = Database::connection();
             $hasIconsColumn = $this->hasTokoIconsColumn($pdo);
+            $hasLogoModeColumn = $this->hasTokoLogoModeColumn($pdo);
             if (!$hasIconsColumn && $iconClass !== '') {
                 toast_add('Kolom toko.icons belum tersedia. Jalankan migration add_icons_to_toko agar icon tersimpan.', 'warning');
             }
@@ -105,6 +115,9 @@ class TokoController
             $selectExisting = 'SELECT id, logo';
             if ($hasIconsColumn) {
                 $selectExisting .= ', icons';
+            }
+            if ($hasLogoModeColumn) {
+                $selectExisting .= ', logo_mode';
             }
             $selectExisting .= ' FROM toko WHERE id = :id LIMIT 1';
             $exists = $pdo->prepare($selectExisting);
@@ -127,7 +140,12 @@ class TokoController
             ];
             if ($hasIconsColumn) {
                 $setParts[] = 'icons = :icons';
-                $params['icons'] = $iconClass !== '' ? $iconClass : null;
+                $existingIcons = (string) ($existingStore['icons'] ?? '');
+                $params['icons'] = $iconClass !== '' ? $iconClass : ($existingIcons !== '' ? $existingIcons : null);
+            }
+            if ($hasLogoModeColumn) {
+                $setParts[] = 'logo_mode = :logo_mode';
+                $params['logo_mode'] = $logoMode;
             }
 
             $logoFileId = null;
@@ -224,6 +242,11 @@ class TokoController
                     $insertVals .= ', :icons';
                     $insertParams['icons'] = $iconClass !== '' ? $iconClass : null;
                 }
+                if ($hasLogoModeColumn) {
+                    $insertCols .= ', logo_mode';
+                    $insertVals .= ', :logo_mode';
+                    $insertParams['logo_mode'] = $logoMode;
+                }
                 $insert = $pdo->prepare(
                     'INSERT INTO toko (' . $insertCols . ') VALUES (' . $insertVals . ')'
                 );
@@ -265,6 +288,24 @@ class TokoController
 
         try {
             $stmt = $pdo->query("SHOW COLUMNS FROM toko LIKE 'icons'");
+            $row = $stmt->fetch();
+            $cached = is_array($row);
+            return $cached;
+        } catch (Throwable) {
+            $cached = false;
+            return false;
+        }
+    }
+
+    private function hasTokoLogoModeColumn(\PDO $pdo): bool
+    {
+        static $cached = null;
+        if (is_bool($cached)) {
+            return $cached;
+        }
+
+        try {
+            $stmt = $pdo->query("SHOW COLUMNS FROM toko LIKE 'logo_mode'");
             $row = $stmt->fetch();
             $cached = is_array($row);
             return $cached;

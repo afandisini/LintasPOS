@@ -1,26 +1,6 @@
 /* public/assets/css/app.css */
 
 :root {
-  --aiti-bg: #f4f8ff;
-  --aiti-text: #0f172a;
-  --aiti-muted: rgba(15, 23, 42, 0.72);
-  --aiti-card: rgba(255, 255, 255, 0.74);
-  --bg-grs: rgba(0, 0, 0, 0.08);
-  --aiti-mark-bg: rgba(255, 255, 255, 0.25);
-  --aiti-mark-border: rgba(255, 255, 255, 0.25);
-  --aiti-input-border: rgba(148, 163, 184, 0.4);
-  --aiti-input-shadow: rgba(2, 6, 23, 0.14);
-  --aiti-input-focus-border: rgba(14, 116, 144, 0.45);
-  --aiti-input-focus-shadow: rgba(2, 6, 23, 0.2);
-  --aiti-btn-shadow: rgba(0, 0, 0, 0.18);
-  --brand-logo-fill: rgba(255, 255, 255, 0.25);
-  --brand-logo-stroke: rgba(255, 255, 255, 0.55);
-  --theme-toggle-border: rgba(148, 163, 184, 0.35);
-  --theme-toggle-hover-bg: rgba(148, 163, 184, 0.18);
-  --aiti-radius: 999px;
-}
-
-[data-theme="dark"] {
   --aiti-bg: #0b1120;
   --aiti-text: #e2e8f0;
   --aiti-muted: rgba(226, 232, 240, 0.72);
@@ -37,6 +17,26 @@
   --brand-logo-stroke: rgba(148, 163, 184, 0.44);
   --theme-toggle-border: rgba(148, 163, 184, 0.38);
   --theme-toggle-hover-bg: rgba(148, 163, 184, 0.26);
+  --aiti-radius: 999px;
+}
+
+[data-theme="light"] {
+  --aiti-bg: #f4f8ff;
+  --aiti-text: #0f172a;
+  --aiti-muted: rgba(15, 23, 42, 0.72);
+  --aiti-card: rgba(255, 255, 255, 0.74);
+  --bg-grs: rgba(0, 0, 0, 0.08);
+  --aiti-mark-bg: rgba(255, 255, 255, 0.25);
+  --aiti-mark-border: rgba(255, 255, 255, 0.25);
+  --aiti-input-border: rgba(148, 163, 184, 0.4);
+  --aiti-input-shadow: rgba(2, 6, 23, 0.14);
+  --aiti-input-focus-border: rgba(14, 116, 144, 0.45);
+  --aiti-input-focus-shadow: rgba(2, 6, 23, 0.2);
+  --aiti-btn-shadow: rgba(0, 0, 0, 0.18);
+  --brand-logo-fill: rgba(255, 255, 255, 0.25);
+  --brand-logo-stroke: rgba(255, 255, 255, 0.55);
+  --theme-toggle-border: rgba(148, 163, 184, 0.35);
+  --theme-toggle-hover-bg: rgba(148, 163, 184, 0.18);
 }
 
 /* Full hero page */
@@ -179,29 +179,55 @@ body::before {
   width: 42px;
   height: 42px;
   border: 1px solid var(--theme-toggle-border);
-  border-radius: 999px;
-  background: var(--aiti-card);
+  border-radius: 12px;
+  background: transparent;
   color: var(--aiti-text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(8px);
+  overflow: hidden;
 }
 
 .theme-toggle:hover {
   background: var(--theme-toggle-hover-bg);
 }
 
-.theme-toggle .bi-sun-fill {
-  display: none;
+.theme-toggle-track {
+  position: relative;
+  width: 20px;
+  height: 20px;
 }
 
-[data-theme="dark"] .theme-toggle .bi-sun-fill {
-  display: inline-block;
+.theme-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-[data-theme="dark"] .theme-toggle .bi-moon-stars-fill {
-  display: none;
+/* Default (dark): sun visible, moon hidden */
+.theme-icon-moon {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.5);
+}
+
+.theme-icon-sun {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+/* Light mode: moon visible, sun hidden */
+[data-theme="light"] .theme-icon-moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+[data-theme="light"] .theme-icon-sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.5);
 }
 
 /* Responsive tweaks */

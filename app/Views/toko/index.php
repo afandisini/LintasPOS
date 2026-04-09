@@ -12,6 +12,7 @@ $storeAddress = (string) ($store['alamat_toko'] ?? '');
 $storePhone = (string) ($store['tlp'] ?? '');
 $storeOwner = (string) ($store['nama_pemilik'] ?? '');
 $storeIcon = trim((string) ($store['icons'] ?? ''));
+$storeLogoMode = trim((string) ($store['logo_mode'] ?? 'icon'));
 $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeName : 'Toko');
 ?>
 <?= raw(view('partials/dashboard/head', ['title' => $title ?? 'Pengaturan Toko'])) ?>
@@ -46,6 +47,7 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
                     <form method="post" action="<?= e(site_url('toko')) ?>" enctype="multipart/form-data" autocomplete="off">
                         <?= raw(csrf_field()) ?>
                         <input type="hidden" name="id" value="<?= e((string) ($storeId > 0 ? $storeId : 1)) ?>">
+                        <input type="hidden" name="logo_mode" id="logo_mode_input" value="<?= e($storeLogoMode) ?>">
 
                         <div class="fg">
                             <label class="fl" for="nama_toko">Nama Brand</label>
@@ -116,11 +118,11 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
                     <div class="act-item">
                         <div class="act-dot bg-warning"></div>
                         <div class="act-text">
-                            <p><strong>Logo:</strong></p>
+                            <p><strong id="logo_label"><?= $storeLogoMode === 'gambar' ? 'Gambar:' : 'Icon:' ?></strong></p>
                             <div class="store-logo-box">
-                                <?php if ($storeLogoMeta['has_image']): ?>
+                                <?php if ($storeLogoMode === 'gambar' && $storeLogoMeta['has_image']): ?>
                                     <img class="store-logo" src="<?= e($storeLogoMeta['url']) ?>" alt="<?= e($storeName !== '' ? $storeName : 'Toko') ?>">
-                                <?php elseif ($storeIcon !== ''): ?>
+                                <?php elseif ($storeLogoMode === 'icon' && $storeIcon !== ''): ?>
                                     <span class="store-logo is-icon"><i class="<?= e($storeIcon) ?>"></i></span>
                                 <?php else: ?>
                                     <span class="store-logo is-initials"><?= e($storeLogoMeta['initials']) ?></span>
@@ -150,7 +152,15 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
                     <div class="act-item">
                         <div class="act-dot bg-danger"></div>
                         <div class="act-text">
-                            <p><strong>Icons:</strong> <?= e($storeIcon !== '' ? $storeIcon : '-') ?></p>
+                            <p><strong>Tampilkan sebagai:</strong></p>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <select class="u-input w-50" id="logo_type_select">
+                                    <option value="">Pilih Gambar/Icon</option>
+                                    <option value="gambar"<?= $storeLogoMode === 'gambar' ? ' selected' : '' ?>>Gambar</option>
+                                    <option value="icon"<?= $storeLogoMode === 'icon' ? ' selected' : '' ?>>Icon</option>
+                                </select>
+                                <button class="btn-g btn-sm" id="logo_type_apply_btn">Terapkan</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -197,6 +207,90 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
             }
             nameEl.textContent = files[0].name || '1 file dipilih';
         });
+    })();
+
+    (function() {
+        var applyBtn = document.getElementById('logo_type_apply_btn');
+        var typeSelect = document.getElementById('logo_type_select');
+        var logoModeInput = document.getElementById('logo_mode_input');
+        var logoLabel = document.getElementById('logo_label');
+        var logoFileGroup = document.getElementById('logo_file') ? document.getElementById('logo_file').closest('.fg') : null;
+        var iconsGroup = document.getElementById('icons_picker_btn') ? document.getElementById('icons_picker_btn').closest('.fg') : null;
+        var logoBox = document.querySelector('.store-logo-box');
+
+        if (applyBtn && typeSelect) {
+            applyBtn.addEventListener('click', function() {
+                var val = typeSelect.value;
+                if (!val) return;
+                if (logoModeInput) logoModeInput.value = val;
+                if (logoLabel) logoLabel.textContent = val === 'gambar' ? 'Gambar:' : 'Icon:';
+                if (val === 'gambar') {
+                    if (logoFileGroup) logoFileGroup.style.display = '';
+                    if (iconsGroup) iconsGroup.style.display = 'none';
+                    if (logoBox) {
+                        // Sembunyikan icon, tampilkan gambar atau initials
+                        var iconSpan = logoBox.querySelector('span.is-icon');
+                        if (iconSpan) iconSpan.style.display = 'none';
+                        var img = logoBox.querySelector('img.store-logo');
+                        var initialsSpan = logoBox.querySelector('span.is-initials');
+                        if (img) {
+                            img.style.display = '';
+                            if (initialsSpan) initialsSpan.style.display = 'none';
+                        } else if (initialsSpan) {
+                            initialsSpan.style.display = '';
+                        } else {
+                            logoBox.insertAdjacentHTML('beforeend', '<span class="store-logo is-initials"><?= e($storeLogoMeta["initials"]) ?></span>');
+                        }
+                    }
+                } else if (val === 'icon') {
+                    if (logoFileGroup) logoFileGroup.style.display = 'none';
+                    if (iconsGroup) iconsGroup.style.display = '';
+                    if (logoBox) {
+                        var img2 = logoBox.querySelector('img.store-logo');
+                        if (img2) img2.style.display = 'none';
+                        var initialsSpan2 = logoBox.querySelector('span.is-initials');
+                        if (initialsSpan2) initialsSpan2.style.display = 'none';
+                        var currentIcon = document.getElementById('icons_value') ? document.getElementById('icons_value').value : '';
+                        var iconSpan2 = logoBox.querySelector('span.is-icon');
+                        if (currentIcon !== '') {
+                            if (iconSpan2) {
+                                iconSpan2.style.display = '';
+                                var iEl = iconSpan2.querySelector('i');
+                                if (iEl) iEl.className = currentIcon;
+                            } else {
+                                logoBox.insertAdjacentHTML('beforeend', '<span class="store-logo is-icon"><i class="' + currentIcon + '"></i></span>');
+                            }
+                        } else if (iconSpan2) {
+                            iconSpan2.style.display = '';
+                        }
+                    }
+                }
+            });
+        }
+
+        // Live-update preview when icon is selected from picker
+        var iconsHidden = document.getElementById('icons_value');
+        if (iconsHidden && logoBox) {
+            var observer = new MutationObserver(function() {
+                if (typeSelect && typeSelect.value !== 'icon') return;
+                var cls = iconsHidden.value;
+                var span = logoBox.querySelector('span.is-icon');
+                if (cls !== '') {
+                    if (span) {
+                        span.style.display = '';
+                        var iEl = span.querySelector('i');
+                        if (iEl) iEl.className = cls;
+                    } else {
+                        logoBox.insertAdjacentHTML('beforeend', '<span class="store-logo is-icon"><i class="' + cls + '"></i></span>');
+                    }
+                }
+            });
+            observer.observe(iconsHidden, { attributes: true, attributeFilter: ['value'] });
+            // Also listen via input event fallback
+            iconsHidden.addEventListener('change', function() {
+                iconsHidden.dispatchEvent(new Event('input'));
+            });
+        }
     })();
 
     (function() {
@@ -318,6 +412,8 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
             var iconClass = btn.getAttribute('data-icon') || '';
             hiddenInput.value = iconClass;
             selectedNameEl.textContent = iconClass !== '' ? iconClass : 'Tidak ada icon yang dipilih';
+            hiddenInput.setAttribute('value', iconClass);
+            hiddenInput.dispatchEvent(new Event('change'));
             closePicker();
         });
 

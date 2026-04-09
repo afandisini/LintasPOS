@@ -49,7 +49,7 @@ foreach ($generatedMenus as $menu) {
 
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-        <div class="brand-icon"><i class="{{icons}}"></i></div>
+        <div class="brand-icon">{{brand_logo}}</div>
         <span class="brand-text">{{nama_toko}}</span>
     </div>
 

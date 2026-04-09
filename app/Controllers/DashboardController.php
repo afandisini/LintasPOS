@@ -37,31 +37,30 @@ class DashboardController
             $stats['today_sales'] = (int) $pdo->query(
                 "SELECT COALESCE(SUM(total),0) FROM penjualan WHERE tanggal_input = CURDATE()"
             )->fetchColumn();
+
+            $currentPeriode = date('Ym');
             $stats['month_revenue'] = (int) $pdo->query(
-                "SELECT COALESCE(SUM(total),0) FROM penjualan WHERE DATE_FORMAT(STR_TO_DATE(tanggal_input, '%Y-%m-%d'), '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')"
+                "SELECT COALESCE(SUM(total),0) FROM penjualan WHERE periode = '{$currentPeriode}'"
             )->fetchColumn();
             $stats['month_transactions'] = (int) $pdo->query(
-                "SELECT COUNT(*) FROM penjualan WHERE DATE_FORMAT(STR_TO_DATE(tanggal_input, '%Y-%m-%d'), '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')"
+                "SELECT COUNT(*) FROM penjualan WHERE periode = '{$currentPeriode}'"
             )->fetchColumn();
 
-            $statementChart = $pdo->query(
-                "SELECT DATE_FORMAT(STR_TO_DATE(tanggal_input, '%Y-%m-%d'), '%Y-%m') AS ym, COALESCE(SUM(total),0) AS amount "
-                . "FROM penjualan "
-                . "WHERE tanggal_input IS NOT NULL AND tanggal_input <> '' "
-                . "GROUP BY ym ORDER BY ym DESC LIMIT 6"
-            );
-            $rawChart = $statementChart->fetchAll();
-            $rawChart = array_reverse(is_array($rawChart) ? $rawChart : []);
+            $rawChart = $pdo->query(
+                "SELECT periode, COALESCE(SUM(total),0) AS amount "
+                . "FROM penjualan WHERE periode IS NOT NULL AND periode <> '' "
+                . "GROUP BY periode ORDER BY periode DESC LIMIT 6"
+            )->fetchAll();
+            $dbMap = [];
+            foreach (is_array($rawChart) ? $rawChart : [] as $row) {
+                $dbMap[(string) ($row['periode'] ?? '')] = (int) ($row['amount'] ?? 0);
+            }
 
-            foreach ($rawChart as $row) {
-                $ym = (string) ($row['ym'] ?? '');
-                if ($ym === '') {
-                    continue;
-                }
-
-                $date = \DateTimeImmutable::createFromFormat('Y-m', $ym);
-                $chartLabels[] = $date ? $date->format('M Y') : $ym;
-                $chartValues[] = (int) ($row['amount'] ?? 0);
+            for ($i = 5; $i >= 0; $i--) {
+                $dt = new \DateTimeImmutable('first day of -' . $i . ' month');
+                $p  = $dt->format('Ym');
+                $chartLabels[] = $dt->format('M Y');
+                $chartValues[] = $dbMap[$p] ?? 0;
             }
 
             $recentSalesStmt = $pdo->query(

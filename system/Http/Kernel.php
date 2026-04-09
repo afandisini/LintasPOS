@@ -48,8 +48,22 @@ class Kernel
         );
 
         $response = $this->normalizeResponse($result);
+        $response = $this->addSecurityHeaders($response);
 
         return $headOnly ? $response->withoutBody() : $response;
+    }
+
+    private function addSecurityHeaders(Response $response): Response
+    {
+        return $response
+            ->withHeader('X-Frame-Options', 'SAMEORIGIN')
+            ->withHeader('X-Content-Type-Options', 'nosniff')
+            ->withHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+            ->withHeader('X-XSS-Protection', '1; mode=block')
+            ->withHeader(
+                'Content-Security-Policy',
+                "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+            );
     }
 
     private function dispatchToRoute(Request $request, Route $route): mixed

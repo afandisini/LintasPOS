@@ -284,6 +284,7 @@ if (!function_exists('store_profile')) {
             'nama_pemilik' => '',
             'logo' => '',
             'icons' => '',
+            'logo_mode' => 'icon',
         ];
 
         try {
@@ -296,12 +297,18 @@ if (!function_exists('store_profile')) {
             $row = null;
             try {
                 $row = $pdo->query(
-                    'SELECT nama_toko, alamat_toko, tlp, nama_pemilik, logo, icons FROM toko ORDER BY id ASC LIMIT 1'
+                    'SELECT nama_toko, alamat_toko, tlp, nama_pemilik, logo, icons, logo_mode FROM toko ORDER BY id ASC LIMIT 1'
                 )->fetch();
             } catch (\Throwable) {
-                $row = $pdo->query(
-                    'SELECT nama_toko, alamat_toko, tlp, nama_pemilik, logo FROM toko ORDER BY id ASC LIMIT 1'
-                )->fetch();
+                try {
+                    $row = $pdo->query(
+                        'SELECT nama_toko, alamat_toko, tlp, nama_pemilik, logo, icons FROM toko ORDER BY id ASC LIMIT 1'
+                    )->fetch();
+                } catch (\Throwable) {
+                    $row = $pdo->query(
+                        'SELECT nama_toko, alamat_toko, tlp, nama_pemilik, logo FROM toko ORDER BY id ASC LIMIT 1'
+                    )->fetch();
+                }
             }
 
             if (!is_array($row)) {
@@ -316,6 +323,7 @@ if (!function_exists('store_profile')) {
                 'nama_pemilik' => (string) ($row['nama_pemilik'] ?? ''),
                 'logo' => (string) ($row['logo'] ?? ''),
                 'icons' => (string) ($row['icons'] ?? ''),
+                'logo_mode' => (string) ($row['logo_mode'] ?? 'icon'),
             ];
         } catch (\Throwable) {
             $cached = $fallback;
@@ -333,6 +341,30 @@ if (!function_exists('toko')) {
     }
 }
 
+if (!function_exists('store_brand_logo_html')) {
+    function store_brand_logo_html(): string
+    {
+        $mode = toko('logo_mode', 'icon');
+        $logoId = toko('logo', '');
+        $icons = toko('icons', '');
+        $storeName = toko('nama_toko', brand_name());
+
+        if ($mode === 'gambar' && $logoId !== '' && $logoId !== '0') {
+            $relative = filemanager_path_by_id((int) $logoId);
+            if ($relative !== '' && str_starts_with($relative, 'filemanager/toko/')) {
+                $url = site_url('media/public?path=' . urlencode($relative));
+                return '<img src="' . Escaper::escape($url) . '" alt="' . Escaper::escape($storeName) . '" style="height:32px;width:auto;object-fit:contain;">';
+            }
+        }
+
+        if ($icons !== '') {
+            return '<i class="' . Escaper::escape($icons) . '"></i>';
+        }
+
+        return '<span>' . Escaper::escape(avatar_initials($storeName)) . '</span>';
+    }
+}
+
 if (!function_exists('store_placeholders')) {
     function store_placeholders(string $content): string
     {
@@ -345,6 +377,7 @@ if (!function_exists('store_placeholders')) {
             '{{pemilik}}' => toko('nama_pemilik', ''),
             '{{logo}}' => avatar_url(toko('logo', '')),
             '{{icons}}' => toko('icons', ''),
+            '{{brand_logo}}' => store_brand_logo_html(),
         ];
 
         return strtr($content, $replace);
