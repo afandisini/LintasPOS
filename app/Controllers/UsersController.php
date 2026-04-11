@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\Database;
+use App\Services\SecurityLogger;
 use System\Http\Request;
 use System\Http\Response;
 use Throwable;
@@ -416,7 +417,10 @@ class UsersController
                 'active' => $active,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
-
+            $newUserId = (int) $pdo->lastInsertId();
+            SecurityLogger::logAudit('users', 'CREATE', 'users', (string) $newUserId,
+                null, ['name' => $name, 'username' => $username, 'hak_akses_id' => $hakAksesId, 'active' => $active],
+                true, SecurityLogger::RISK_LOW);
             toast_add('Pengguna baru berhasil ditambahkan.', 'success');
         } catch (Throwable) {
             toast_add('Gagal menambahkan pengguna.', 'error');
@@ -470,6 +474,10 @@ class UsersController
                 return Response::redirect('/users');
             }
 
+            $beforeStmt = $pdo->prepare('SELECT id, name, user, email, hak_akses_id, active FROM users WHERE id = :id LIMIT 1');
+            $beforeStmt->execute(['id' => $userId]);
+            $beforeRow = $beforeStmt->fetch(\PDO::FETCH_ASSOC);
+
             if ($password === '') {
                 $stmt = $pdo->prepare(
                     'UPDATE users SET name = :name, email = :email, telepon = :telepon, alamat = :alamat, user = :user, hak_akses_id = :hak_akses_id, active = :active '
@@ -504,6 +512,17 @@ class UsersController
             }
 
             toast_add('Data pengguna berhasil diperbarui.', 'success');
+            $afterSnap = ['name' => $name, 'username' => $username, 'hak_akses_id' => $hakAksesId, 'active' => $active];
+            $isRoleChange = is_array($beforeRow) && (string)($beforeRow['hak_akses_id'] ?? '') !== (string)$hakAksesId;
+            SecurityLogger::logAudit('users', 'UPDATE', 'users', (string) $userId,
+                is_array($beforeRow) ? $beforeRow : null, $afterSnap,
+                true, $isRoleChange ? SecurityLogger::RISK_MEDIUM : SecurityLogger::RISK_LOW);
+            if ($isRoleChange) {
+                SecurityLogger::logSecurityEvent('USER_ROLE_CHANGE', 'sensitive', 'medium',
+                    SecurityLogger::RISK_MEDIUM, 'UsersController',
+                    ['target_user_id' => $userId, 'old_role' => $beforeRow['hak_akses_id'] ?? '', 'new_role' => $hakAksesId],
+                    'logged');
+            }
         } catch (Throwable) {
             toast_add('Gagal memperbarui pengguna.', 'error');
         }
@@ -528,6 +547,9 @@ class UsersController
 
         try {
             $pdo = Database::connection();
+            $beforeStmt = $pdo->prepare('SELECT id, name, user, email, hak_akses_id, active FROM users WHERE id = :id LIMIT 1');
+            $beforeStmt->execute(['id' => $userId]);
+            $beforeRow = $beforeStmt->fetch(\PDO::FETCH_ASSOC);
             $stmt = $pdo->prepare('DELETE FROM users WHERE id = :id AND id <> 1');
             $stmt->execute(['id' => $userId]);
 
@@ -536,6 +558,8 @@ class UsersController
                 return Response::redirect('/users');
             }
 
+            SecurityLogger::logAudit('users', 'DELETE', 'users', (string) $userId,
+                is_array($beforeRow) ? $beforeRow : null, null, true, SecurityLogger::RISK_MEDIUM);
             toast_add('Pengguna berhasil dihapus.', 'success');
         } catch (Throwable) {
             toast_add('Gagal menghapus pengguna.', 'error');

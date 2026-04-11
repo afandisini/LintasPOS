@@ -60,9 +60,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
             <span class="panel-title" id="cmExportTransaksiTitle"><i class="bi bi-file-pdf me-1"></i> Preview Laporan Transaksi</span>
             <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
         </div>
-        <div class="panel-body" style="flex: 1; overflow: auto; padding: 0;">
-            <iframe id="pdfPreviewTransaksi" style="width: 100%; height: 100%; border: none;" src=""></iframe>
-        </div>
+        <div class="panel-body pdf-preview-body" id="pdfPreviewTransaksi" style="flex: 1; overflow: auto; padding: 16px;"></div>
         <div class="cm-foot">
             <button type="button" class="btn-g" data-cm-close>Batal</button>
             <button type="button" class="btn-a" id="btnCetakTransaksi"><i class="bi bi-printer me-1"></i> Cetak</button>
@@ -78,9 +76,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
             <span class="panel-title" id="cmExportRugiLabaTitle"><i class="bi bi-file-pdf me-1"></i> Preview Laporan Rugi Laba</span>
             <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
         </div>
-        <div class="panel-body" style="flex: 1; overflow: auto; padding: 0;">
-            <iframe id="pdfPreviewRugiLaba" style="width: 100%; height: 100%; border: none;" src=""></iframe>
-        </div>
+        <div class="panel-body pdf-preview-body" id="pdfPreviewRugiLaba" style="flex: 1; overflow: auto; padding: 16px;"></div>
         <div class="cm-foot">
             <button type="button" class="btn-g" data-cm-close>Batal</button>
             <button type="button" class="btn-a" id="btnCetakRugiLaba"><i class="bi bi-printer me-1"></i> Cetak</button>
@@ -96,9 +92,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
             <span class="panel-title" id="cmExportKeuanganTitle"><i class="bi bi-file-pdf me-1"></i> Preview Laporan Keuangan</span>
             <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
         </div>
-        <div class="panel-body" style="flex: 1; overflow: auto; padding: 0;">
-            <iframe id="pdfPreviewKeuangan" style="width: 100%; height: 100%; border: none;" src=""></iframe>
-        </div>
+        <div class="panel-body pdf-preview-body" id="pdfPreviewKeuangan" style="flex: 1; overflow: auto; padding: 16px;"></div>
         <div class="cm-foot">
             <button type="button" class="btn-g" data-cm-close>Batal</button>
             <button type="button" class="btn-a" id="btnCetakKeuangan"><i class="bi bi-printer me-1"></i> Cetak</button>

@@ -12,6 +12,8 @@ $isFilemanager = $currentPath === '/filemanager' || str_starts_with($currentPath
 $isToko = $currentPath === '/toko' || str_starts_with($currentPath, '/toko/');
 $isMenuGenerator = $currentPath === '/menu-generator' || str_starts_with($currentPath, '/menu-generator/');
 
+$isSecurity = $currentPath === '/security' || str_starts_with($currentPath, '/security/');
+
 // Fallback to explicit flag from controller/view when needed.
 if (($activeMenu ?? '') === 'dashboard') {
     $isDashboard = true;
@@ -25,8 +27,8 @@ if (($activeMenu ?? '') === 'filemanager') {
 if (($activeMenu ?? '') === 'toko') {
     $isToko = true;
 }
-if (($activeMenu ?? '') === 'menu-generator') {
-    $isMenuGenerator = true;
+if (($activeMenu ?? '') === 'security') {
+    $isSecurity = true;
 }
 
 $generatedMenus = menu_generator_sidebar_items();
@@ -55,7 +57,7 @@ foreach ($generatedMenus as $menu) {
 
     <nav class="sidebar-nav">
         <div class="nav-label">Menu Utama</div>
-        <a class="s-link <?= e($isDashboard ? 'active' : '') ?>" href="<?= e(site_url('dashboard')) ?>"><i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span></a>
+        <a class="s-link <?= e($isDashboard ? 'active' : '') ?>" href="<?= e(site_url('dashboard')) ?>"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
 
         <?php if ($generatedMenuGroups !== []): ?>
             <?php foreach ($generatedMenuGroups as $groupKey => $menus): ?>
@@ -109,7 +111,7 @@ foreach ($generatedMenus as $menu) {
         <a class="s-link <?= e($isFilemanager ? 'active' : '') ?>" href="<?= e(site_url('filemanager')) ?>"><i class="bi bi-folder2-open"></i><span>File Manager</span></a>
 
         <div class="nav-label">Pengaturan</div>
-        <a class="s-link <?= e($isUsers ? 'active' : '') ?>" href="<?= e(site_url('users')) ?>"><i class="bi bi-people-fill"></i><span>Pengguna</span></a>
+        <a class="s-link <?= e($isUsers ? 'active' : '') ?>" href="<?= e(site_url('users')) ?>"><i class="bi bi-people"></i><span>Pengguna</span></a>
         <a class="s-link <?= e($isToko ? 'active' : '') ?>" href="<?= e(site_url('toko')) ?>"><i class="bi bi-shop"></i><span>Toko</span></a>
         <div class="sb-midline anim" aria-hidden="true">
             <span class="sb-midline-bar"></span>
@@ -118,11 +120,12 @@ foreach ($generatedMenus as $menu) {
             <span class="sb-midline-bar"></span>
         </div>
         <a class="s-link <?= e($isMenuGenerator ? 'active' : '') ?>" href="<?= e(site_url('menu-generator')) ?>"><i class="bi bi-columns-gap"></i><span>Menu Generator</span></a>
+        <a class="s-link <?= e($isSecurity ? 'active' : '') ?>" href="<?= e(site_url('security')) ?>" style="color:var(--danger)"><i class="bi bi-shield-lock-fill"></i><span>Security Monitor</span></a>
 
     </nav>
 
     <div class="sidebar-footer">
-        <div class="sf-meta">&copy; <?= date('Y') ?>. {{nama_toko}}</div>
-        <div class="sf-store"><span class="fw-light">Powered by</span> <?= e(framework_credit()) ?></div>
+        <div class="sf-store">&copy; <?= date('Y') ?>. {{nama_toko}}</div>
+        <div class="sf-meta"><span class="fw-light">Powered by</span> <span class="fw-bold"><?= e(framework_credit()) ?></span></div>
     </div>
 </aside>

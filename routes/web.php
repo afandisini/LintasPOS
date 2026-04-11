@@ -10,8 +10,10 @@ use App\Controllers\MediaController;
 use App\Controllers\MenuGeneratorController;
 use App\Controllers\KeuanganController;
 use App\Controllers\LaporanController;
+use App\Controllers\SecurityController;
 use App\Controllers\TokoController;
 use App\Controllers\TransaksiController;
+use App\Controllers\HakAksesController;
 use App\Controllers\UsersController;
 use App\Middleware\Authenticate;
 use App\Middleware\RedirectIfAuthenticated;
@@ -55,6 +57,9 @@ $router->post('/transaksi/pembelian/po/update', [TransaksiController::class, 'up
 $router->post('/transaksi/pembelian/po/delete', [TransaksiController::class, 'deletePurchasePo'])->withMiddleware(Authenticate::class);
 $router->post('/transaksi/pembelian/checkout', [TransaksiController::class, 'checkoutPembelian'])->withMiddleware(Authenticate::class);
 $router->get('/transaksi/pembelian/history/daily', [TransaksiController::class, 'purchaseHistoryDaily'])->withMiddleware(Authenticate::class);
+$router->get('/transaksi/pembelian/hutang/datatable', [TransaksiController::class, 'purchaseDebtDatatable'])->withMiddleware(Authenticate::class);
+$router->get('/transaksi/pembelian/hutang/detail', [TransaksiController::class, 'purchaseDebtDetail'])->withMiddleware(Authenticate::class);
+$router->post('/transaksi/pembelian/hutang/bayar', [TransaksiController::class, 'paySupplierDebt'])->withMiddleware(Authenticate::class);
 $router->get('/keuangan/input', [KeuanganController::class, 'input'])->withMiddleware(Authenticate::class);
 $router->post('/keuangan/input', [KeuanganController::class, 'input'])->withMiddleware(Authenticate::class);
 $router->get('/keuangan/input/datatable', [KeuanganController::class, 'datatable'])->withMiddleware(Authenticate::class);
@@ -70,6 +75,8 @@ $router->get('/users/datatable', [UsersController::class, 'datatable'])->withMid
 $router->post('/users', [UsersController::class, 'store'])->withMiddleware(Authenticate::class);
 $router->post('/users/{id}/update', [UsersController::class, 'update'])->withMiddleware(Authenticate::class);
 $router->post('/users/{id}/delete', [UsersController::class, 'destroy'])->withMiddleware(Authenticate::class);
+$router->get('/users/{id}/hak-akses', [HakAksesController::class, 'show'])->withMiddleware(Authenticate::class);
+$router->post('/users/{id}/hak-akses', [HakAksesController::class, 'save'])->withMiddleware(Authenticate::class);
 $router->get('/toko', [TokoController::class, 'index'])->withMiddleware(Authenticate::class);
 $router->post('/toko', [TokoController::class, 'update'])->withMiddleware(Authenticate::class);
 $router->get('/menu-generator', [MenuGeneratorController::class, 'index'])->withMiddleware(Authenticate::class);
@@ -142,6 +149,12 @@ $router->post('/laporan', [\App\Controllers\LaporanController::class, 'store'])-
 $router->post('/laporan/{id}/update', [\App\Controllers\LaporanController::class, 'update'])->withMiddleware(\App\Middleware\Authenticate::class);
 $router->post('/laporan/{id}/delete', [\App\Controllers\LaporanController::class, 'destroy'])->withMiddleware(\App\Middleware\Authenticate::class);
 // [MenuGenerator:End]
+
+$router->get('/security', [SecurityController::class, 'index'])->withMiddleware(Authenticate::class);
+$router->get('/security/events/datatable', [SecurityController::class, 'datatableEvents'])->withMiddleware(Authenticate::class);
+$router->get('/security/audit/datatable', [SecurityController::class, 'datatableAudit'])->withMiddleware(Authenticate::class);
+$router->get('/security/blocks/datatable', [SecurityController::class, 'datatableBlocks'])->withMiddleware(Authenticate::class);
+$router->post('/security/unblock', [SecurityController::class, 'unblock'])->withMiddleware(Authenticate::class);
 
 $router->post('/logout', [AuthController::class, 'logout'])->withMiddleware(Authenticate::class);
 

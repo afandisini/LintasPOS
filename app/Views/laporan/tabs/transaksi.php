@@ -20,6 +20,8 @@ $paymentMethods = $paymentMethods ?? [];
                 <select class="fi" id="filterTipe">
                     <option value="penjualan">Penjualan</option>
                     <option value="pembelian">Pembelian</option>
+                    <option value="po">PO</option>
+                    <option value="hutang">Hutang Supplier</option>
                 </select>
             </div>
             <div>
@@ -62,7 +64,7 @@ $paymentMethods = $paymentMethods ?? [];
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div>
+            <div id="wrapKategori">
                 <label class="fl">Kategori Produk</label>
                 <select class="fi" id="filterKategori">
                     <option value="">— Semua —</option>
@@ -91,24 +93,24 @@ $paymentMethods = $paymentMethods ?? [];
 
 <div class="d-flex gap-3 flex-wrap mb-3 anim" id="summaryCards">
     <div class="panel" style="flex:1;min-width:140px;padding:14px 18px;">
-        <div class="small text-muted mb-1"><i class="bi bi-receipt me-1"></i>Total Transaksi</div>
+        <div class="small text-muted mb-1" id="labelTotalTrx"><i class="bi bi-receipt me-1"></i>Total Transaksi</div>
         <div style="font-size:22px;font-weight:700;" id="cardTotalTrx">—</div>
     </div>
     <div class="panel" style="flex:1;min-width:140px;padding:14px 18px;">
-        <div class="small text-muted mb-1"><i class="bi bi-boxes me-1"></i>Total Qty</div>
+        <div class="small text-muted mb-1" id="labelTotalQty"><i class="bi bi-boxes me-1"></i>Total Qty</div>
         <div style="font-size:22px;font-weight:700;" id="cardTotalQty">—</div>
     </div>
     <div class="panel" style="flex:1;min-width:140px;padding:14px 18px;">
-        <div class="small text-muted mb-1"><i class="bi bi-cash-stack me-1"></i>Total Pendapatan</div>
+        <div class="small text-muted mb-1" id="labelGrandTotal"><i class="bi bi-cash-stack me-1"></i>Total Pendapatan</div>
         <div style="font-size:22px;font-weight:700;color:var(--success);" id="cardGrandTotal">—</div>
     </div>
     <?php if ($canViewModal): ?>
         <div class="panel" style="flex:1;min-width:140px;padding:14px 18px;">
-            <div class="small text-muted mb-1"><i class="bi bi-bag me-1"></i>Total Modal</div>
+            <div class="small text-muted mb-1" id="labelTotalModal"><i class="bi bi-bag me-1"></i>Total Modal</div>
             <div style="font-size:22px;font-weight:700;color:var(--danger);" id="cardTotalModal">—</div>
         </div>
         <div class="panel" style="flex:1;min-width:140px;padding:14px 18px;">
-            <div class="small text-muted mb-1"><i class="bi bi-graph-up-arrow me-1"></i>Laba Kotor</div>
+            <div class="small text-muted mb-1" id="labelLaba"><i class="bi bi-graph-up-arrow me-1"></i>Laba Kotor</div>
             <div style="font-size:22px;font-weight:700;color:var(--accent);" id="cardLaba">—</div>
         </div>
     <?php endif; ?>

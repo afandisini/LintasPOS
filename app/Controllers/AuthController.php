@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\AuthService;
+use App\Services\SecurityLogger;
 use System\Http\Request;
 use System\Http\Response;
 
@@ -53,6 +54,14 @@ class AuthController
             ]);
             toast_add((string) ($result['message'] ?? 'Login gagal.'), 'error');
 
+            SecurityLogger::logAuth(
+                authEvent: SecurityLogger::AUTH_LOGIN_FAILED,
+                result: 'failed',
+                identifier: $identity,
+                userId: null,
+                riskScore: SecurityLogger::RISK_LOW,
+            );
+
             return Response::redirect('/login');
         }
 
@@ -70,6 +79,15 @@ class AuthController
             'ua_hash' => hash('sha256', (string) ($_SERVER['HTTP_USER_AGENT'] ?? 'unknown')),
             'login_at' => date('Y-m-d H:i:s'),
         ];
+
+        SecurityLogger::logAuth(
+            authEvent: SecurityLogger::AUTH_LOGIN_SUCCESS,
+            result: 'success',
+            identifier: $identity,
+            userId: (int) ($user['id'] ?? 0),
+            riskScore: SecurityLogger::RISK_NORMAL,
+        );
+
         toast_add('Login berhasil. Selamat datang, ' . (string) ($user['name'] ?? 'User') . '.', 'success');
 
         return Response::redirect('/dashboard');
@@ -78,6 +96,18 @@ class AuthController
     public function logout(Request $request): Response
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
+            $auth = $_SESSION['auth'] ?? [];
+            $userId = is_array($auth) ? ((int) ($auth['id'] ?? 0) ?: null) : null;
+            $username = is_array($auth) ? (string) ($auth['username'] ?? '') : '';
+
+            SecurityLogger::logAuth(
+                authEvent: SecurityLogger::AUTH_LOGOUT,
+                result: 'success',
+                identifier: $username,
+                userId: $userId,
+                riskScore: SecurityLogger::RISK_NORMAL,
+            );
+
             $_SESSION = [];
 
             if (ini_get('session.use_cookies')) {

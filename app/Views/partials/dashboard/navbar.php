@@ -8,9 +8,10 @@ $avatar = avatar_meta($auth['avatar'] ?? null, (string) ($auth['name'] ?? 'User'
 <header class="topnav" id="topnav">
     <div class="t-left">
         <button class="btn-sb" onclick="toggleSidebar()" aria-label="Toggle menu"><i class="bi bi-list"></i></button>
-        <div class="search-box">
+        <div class="search-box" id="globalSearchBox">
             <i class="bi bi-search"></i>
-            <input type="text" placeholder="Cari data dashboard...">
+            <input type="text" id="globalSearchInput" placeholder="Cari Barang, Jasa, Pelanggan, Supplier..." autocomplete="off">
+            <div class="gs-dropdown" id="gsDropdown"></div>
         </div>
     </div>
 
@@ -44,7 +45,7 @@ $avatar = avatar_meta($auth['avatar'] ?? null, (string) ($auth['name'] ?? 'User'
                     <?= raw(csrf_field()) ?>
                     <button type="submit" class="user-dd-item is-danger">
                         <i class="bi bi-box-arrow-right"></i>
-                        <span>Logout</span>
+                        <span>Keluar</span>
                     </button>
                 </form>
             </div>

@@ -145,3 +145,99 @@
     applyTheme(getTheme());
     initChart(getTheme());
 })();
+
+// ── Global Search ────────────────────────────────────────────────
+(function () {
+    var input    = document.getElementById('globalSearchInput');
+    var dropdown = document.getElementById('gsDropdown');
+    if (!input || !dropdown) return;
+
+    var timer    = null;
+    var activeIdx = -1;
+    var items    = [];
+
+    var typeLabel = { barang: 'Barang', jasa: 'Jasa', pelanggan: 'Pelanggan', supplier: 'Supplier' };
+    var iconClass = { barang: '', jasa: 'gs-icon-jasa', pelanggan: 'gs-icon-pelanggan', supplier: 'gs-icon-supplier' };
+
+    function open()  { dropdown.classList.add('gs-open'); }
+    function close() { dropdown.classList.remove('gs-open'); activeIdx = -1; }
+
+    function render(results) {
+        if (!results.length) {
+            dropdown.innerHTML = '<div class="gs-empty">Tidak ada hasil ditemukan.</div>';
+            open(); return;
+        }
+
+        var grouped = {};
+        results.forEach(function (r) {
+            if (!grouped[r.type]) grouped[r.type] = [];
+            grouped[r.type].push(r);
+        });
+
+        var html = '';
+        Object.keys(grouped).forEach(function (type) {
+            html += '<div class="gs-group-label">' + (typeLabel[type] || type) + '</div>';
+            grouped[type].forEach(function (r) {
+                html += '<a class="gs-item" href="' + r.url + '">'
+                    + '<div class="gs-item-icon ' + (iconClass[type] || '') + '"><i class="bi ' + r.icon + '"></i></div>'
+                    + '<div class="gs-item-body">'
+                    + '<div class="gs-item-label">' + esc(r.label) + '</div>'
+                    + (r.sub ? '<div class="gs-item-meta">' + esc(r.sub) + '</div>' : '')
+                    + (r.meta ? '<div class="gs-item-meta">' + esc(r.meta) + '</div>' : '')
+                    + '</div></a>';
+            });
+        });
+
+        dropdown.innerHTML = html;
+        items = dropdown.querySelectorAll('.gs-item');
+        open();
+    }
+
+    function esc(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function search(q) {
+        dropdown.innerHTML = '<div class="gs-loading"><i class="bi bi-arrow-repeat spin-icon"></i> Mencari...</div>';
+        open();
+        fetch('/api/search?q=' + encodeURIComponent(q))
+            .then(function (r) {
+                if (!r.ok) throw new Error('status ' + r.status);
+                return r.json();
+            })
+            .then(function (data) { render(data.results || []); })
+            .catch(function () {
+                dropdown.innerHTML = '<div class="gs-empty">Gagal memuat hasil pencarian.</div>';
+            });
+    }
+
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        var q = input.value.trim();
+        if (q.length < 2) { close(); return; }
+        timer = setTimeout(function () { search(q); }, 300);
+    });
+
+    input.addEventListener('keydown', function (e) {
+        if (!dropdown.classList.contains('gs-open')) return;
+        items = dropdown.querySelectorAll('.gs-item');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIdx = Math.min(activeIdx + 1, items.length - 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIdx = Math.max(activeIdx - 1, 0);
+        } else if (e.key === 'Enter' && activeIdx >= 0) {
+            e.preventDefault();
+            items[activeIdx].click();
+            return;
+        } else if (e.key === 'Escape') {
+            close(); return;
+        }
+        items.forEach(function (el, i) { el.classList.toggle('gs-active', i === activeIdx); });
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!document.getElementById('globalSearchBox').contains(e.target)) close();
+    });
+})();

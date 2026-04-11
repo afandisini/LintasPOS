@@ -115,19 +115,16 @@
             <div class="anim" id="users-table">
                 <div class="panel h-100">
                     <div class="panel-head">
-                        <span class="panel-title">Ringkasan Users</span>
-                        <span class="text-muted" style="font-size:12px"><i class="bi bi-person-badge"></i> <?= e((string) ($auth['role'] ?? '-')) ?></span>
+                        <span class="panel-title">Ringkasan</span>
+                        <span class="text-muted" style="font-size:12px"><i class="bi bi-person-circle"></i> <?= e((string) ($auth['role'] ?? '-')) ?></span>
                     </div>
                     <div class="panel-body">
                         <div class="row">
-                            <div class="col-md-6 mb-2">
-                                <div class="mini-item small"><span><i class="bi bi-people"></i></span><strong><?= e(number_format((int) ($stats['users'] ?? 0))) ?></strong></div>
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <div class="mini-item small"><span><i class="bi bi-person"></i></span><strong><?= e(number_format((int) ($stats['customers'] ?? 0))) ?></strong></div>
+                            <div class="col-md-12 mb-2">
+                                <div class="mini-item small"><span><i class="bi bi-people"></i> Pengguna</span><strong><?= e(number_format((int) ($stats['users'] ?? 0))) ?></strong></div>
                             </div>
                             <div class="col-md-12 mb-2">
-                                <div class="mini-item small"><span><i class="bi bi-box-seam"></i></span><strong><?= e(number_format((int) ($stats['products'] ?? 0))) ?></strong></div>
+                                <div class="mini-item small"><span><i class="bi bi-person"></i> Pelanggan</span><strong><?= e(number_format((int) ($stats['customers'] ?? 0))) ?></strong></div>
                             </div>
                         </div>
                     </div>
@@ -138,7 +135,7 @@
             <div class="panel h-100" id="recent-sales">
                 <div class="panel-head">
                     <span class="panel-title">Transaksi</span>
-                    <div class="panel-link"><i class="bi bi-clock"></i> 8 Transaksi Terbaru</div>
+                    <div class="panel-link"><i class="bi bi-clock"></i> Transaksi Terbaru</div>
                 </div>
                 <div class="panel-body" style="max-height:290px;overflow-y:auto">
                     <?php if ($recent_sales === []): ?>

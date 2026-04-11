@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
+use App\Services\SecurityLogger;
 use System\Http\Request;
 use System\Http\Response;
 
@@ -28,6 +29,22 @@ class Authenticate
 
         // Bind authenticated session to original network + user-agent fingerprint.
         if ($storedIp !== '' && $storedUaHash !== '' && ($storedIp !== $currentIp || $storedUaHash !== $currentUaHash)) {
+            SecurityLogger::logAuth(
+                authEvent: SecurityLogger::AUTH_SESSION_INVALID,
+                result: 'failed',
+                identifier: (string) ($auth['username'] ?? ''),
+                userId: (int) ($auth['id'] ?? 0) ?: null,
+                riskScore: SecurityLogger::RISK_HIGH,
+            );
+            SecurityLogger::logSecurityEvent(
+                eventCode: 'AUTH_SESSION_HIJACK_SUSPECTED',
+                category: 'session',
+                severity: 'high',
+                riskScore: SecurityLogger::RISK_HIGH,
+                detectionSource: 'Authenticate',
+                context: ['stored_ip' => $storedIp, 'current_ip' => $currentIp],
+                actionTaken: 'session_destroyed',
+            );
             $_SESSION = [];
             session_regenerate_id(true);
             $_SESSION['_flash_auth'] = [

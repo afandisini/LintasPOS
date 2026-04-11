@@ -1,5 +1,4 @@
 <?php
-
 /** @var string $title */
 /** @var array<string,mixed> $auth */
 /** @var array<int,array<string,mixed>> $rows */
@@ -8,191 +7,209 @@
 /** @var bool $autoPrint */
 
 if (!function_exists('to_numeric_value')) {
-    function to_numeric_value(mixed $value): int
+    function to_numeric_value(mixed $value): float
     {
-        if (is_int($value) || is_float($value)) {
-            return (int) $value;
-        }
-
+        if (is_int($value) || is_float($value)) return (float) $value;
         if (is_object($value)) {
-            if (method_exists($value, '__toString')) {
-                $value = (string) $value;
-            } else {
-                return 0;
-            }
+            if (method_exists($value, '__toString')) $value = (string) $value;
+            else return 0.0;
         }
-
         if (is_string($value)) {
-            $clean = strip_tags($value);
-            $clean = html_entity_decode($clean, ENT_QUOTES, 'UTF-8');
-            $clean = preg_replace('/[^0-9\-]/', '', $clean) ?? '0';
-
-            if ($clean === '' || $clean === '-') {
-                return 0;
+            $clean = trim(html_entity_decode(strip_tags($value), ENT_QUOTES, 'UTF-8'));
+            if ($clean === '') {
+                return 0.0;
             }
 
-            return (int) $clean;
-        }
+            $clean = preg_replace('/[^0-9,\.\-]/', '', $clean) ?? '';
+            if ($clean === '' || $clean === '-') {
+                return 0.0;
+            }
 
-        return 0;
+            if (preg_match('/^-?\d{1,3}(?:\.\d{3})+(?:,\d+)?$/', $clean)) {
+                $clean = str_replace('.', '', $clean);
+                $clean = str_replace(',', '.', $clean);
+            } elseif (preg_match('/^-?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/', $clean)) {
+                $clean = str_replace(',', '', $clean);
+            } elseif (str_contains($clean, ',') && !str_contains($clean, '.')) {
+                $clean = str_replace(',', '.', $clean);
+            }
+
+            return (float) $clean;
+        }
+        return 0.0;
     }
 }
 ?>
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Laporan Keuangan' ?></title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><?= $title ?? 'Laporan Keuangan' ?></title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 10px;
-            line-height: 1.4;
-            padding: 20mm;
-        }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    color: var(--text-primary, #1e293b);
+    background: var(--bg-secondary, #f8fafc);
+    line-height: 1.5;
+}
 
-        h1 {
-            font-size: 18px;
-            margin-bottom: 4px;
-        }
+.wrap { padding: 20px; }
 
-        h2 {
-            font-size: 14px;
-            margin-bottom: 8px;
-            color: #333;
-        }
+.rpt-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+.rpt-title { font-size: 16px; font-weight: 700; color: var(--text-primary, #1e293b); margin-bottom: 2px; }
+.rpt-meta { font-size: 11px; color: var(--text-muted, #64748b); }
 
-        .meta {
-            margin-bottom: 12px;
-            color: #666;
-        }
+.dt-wrap {
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.dt-wrap::-webkit-scrollbar { display: none; }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-        }
+.dtable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+.dtable thead th {
+    background: var(--bg-tertiary, #f1f5f9);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    padding: 8px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary, #475569);
+    text-align: left;
+    white-space: nowrap;
+}
+.dtable tbody td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    vertical-align: middle;
+    color: var(--text-primary, #1e293b);
+}
+.dtable tbody tr:last-child td { border-bottom: none; }
+.dtable tbody tr:nth-child(even) td { background: var(--bg-secondary, #f8fafc); }
+.dtable tfoot td {
+    padding: 8px 10px;
+    font-weight: 700;
+    background: var(--bg-tertiary, #f1f5f9);
+    border-top: 2px solid var(--border-color, #e2e8f0);
+    font-size: 12px;
+}
+.nowrap { white-space: nowrap; }
+.w-100 { width: 100%; }
+.text-end { text-align: right; }
 
-        th,
-        td {
-            border: 1px solid #ddd;
-            padding: 5px 6px;
-            text-align: left;
-        }
+.sbadge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.sbadge.scc { background: #dcfce7; color: #166534; }
+.sbadge.wrn { background: #fef9c3; color: #854d0e; }
+.sbadge.inf { background: #dbeafe; color: #1e40af; }
 
-        th {
-            background: #f5f5f5;
-            font-weight: 600;
-            font-size: 10px;
-        }
+.rpt-footer { margin-top: 12px; font-size: 10px; color: var(--text-muted, #64748b); text-align: right; }
 
-        .text-end {
-            text-align: right;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .summary {
-            margin-top: 12px;
-            padding: 8px;
-            background: #f9f9f9;
-            border: 1px solid #ddd;
-        }
-
-        .summary div {
-            display: flex;
-            justify-content: space-between;
-            padding: 4px 0;
-        }
-
-        .summary .grand {
-            font-weight: 700;
-            font-size: 12px;
-            border-top: 2px solid #333;
-            padding-top: 6px;
-            margin-top: 4px;
-        }
-
-        @media print {
-            body {
-                padding: 10mm;
-            }
-
-            @page {
-                size: A4 landscape;
-                margin: 10mm;
-            }
-        }
-    </style>
+@media print {
+    body { background: #fff; font-size: 10px; }
+    .wrap { padding: 0; }
+    .dtable thead th, .dtable tbody td, .dtable tfoot td { font-size: 9px; padding: 4px 6px; }
+    @page { size: A4 landscape; margin: 10mm; }
+}
+</style>
 </head>
-
 <body>
-    <h1><?= $title ?? 'Laporan Keuangan' ?></h1>
-    <div class="meta">
-        <?php if ($filterTanggalDari !== '' || $filterTanggalSampai !== ''): ?>
-            Periode: <?= $filterTanggalDari !== '' ? date('d/m/Y', strtotime($filterTanggalDari)) : '...' ?> - <?= $filterTanggalSampai !== '' ? date('d/m/Y', strtotime($filterTanggalSampai)) : '...' ?> |
-        <?php endif; ?>
-        Dicetak: <?= date('d/m/Y H:i') ?>
+<div class="wrap">
+
+    <div class="rpt-header">
+        <div class="rpt-title"><?= e($title ?? 'Laporan Keuangan') ?></div>
+        <div class="rpt-meta">
+            <?php if ($filterTanggalDari !== '' || $filterTanggalSampai !== ''): ?>
+            Periode: <?= $filterTanggalDari !== '' ? date('d/m/Y', strtotime($filterTanggalDari)) : '...' ?> &ndash; <?= $filterTanggalSampai !== '' ? date('d/m/Y', strtotime($filterTanggalSampai)) : '...' ?> &bull;
+            <?php endif; ?>
+            Dicetak: <?= date('d/m/Y H:i') ?>
+        </div>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th style="width:80px;">Tanggal</th>
-                <th style="width:100px;">No Ref</th>
-                <th>Akun</th>
-                <th style="width:80px;">Tipe Arus</th>
-                <th style="width:100px;" class="text-end">Nominal</th>
-                <th style="width:80px;">Metode</th>
-                <th style="width:60px;">Status</th>
-            </tr>
-        </thead>
-        <tbody>
+    <div class="dt-wrap">
+        <table class="dtable w-100 nowrap">
+            <thead>
+                <tr>
+                    <th>Tanggal</th>
+                    <th>No Ref</th>
+                    <th>Akun</th>
+                    <th>Tipe Arus</th>
+                    <th class="text-end">Nominal</th>
+                    <th>Metode</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
             <?php
             $totalNominal = 0;
             foreach ($rows as $r):
                 if (!is_array($r)) continue;
-
-                $nominal = to_numeric_value($r['nominal'] ?? 0);
+                $nominal  = to_numeric_value($r['nominal'] ?? 0);
                 $totalNominal += $nominal;
+                $tipeArus = (string)($r['tipe_arus'] ?? '-');
+                $badgeCls = $tipeArus === 'pemasukan' ? 'scc' : ($tipeArus === 'pengeluaran' ? 'wrn' : 'inf');
+                $status   = (string)($r['status'] ?? '-');
             ?>
                 <tr>
-                    <td><?= (string) ($r['tanggal'] ?? '-') ?></td>
-                    <td><?= (string) ($r['no_ref'] ?? '-') ?></td>
-                    <td><?= (string) ($r['kode_akun'] ?? '-') ?> - <?= (string) ($r['nama_akun'] ?? '-') ?></td>
-                    <td><?= (string) ($r['tipe_arus'] ?? '-') ?></td>
+                    <td><?= e((string)($r['tanggal'] ?? '-')) ?></td>
+                    <td><?= e((string)($r['no_ref'] ?? '-')) ?></td>
+                    <td><?= e((string)($r['kode_akun'] ?? '-')) ?> &ndash; <?= e((string)($r['nama_akun'] ?? '-')) ?></td>
+                    <td><span class="sbadge <?= $badgeCls ?>"><?= e($tipeArus) ?></span></td>
                     <td class="text-end"><?= format_currency_id($nominal) ?></td>
-                    <td><?= (string) ($r['metode_pembayaran'] ?? '-') ?></td>
-                    <td><?= (string) ($r['status'] ?? '-') ?></td>
+                    <td><?= e((string)($r['metode_pembayaran'] ?? '-')) ?></td>
+                    <td><span class="sbadge <?= $status === 'posted' ? 'scc' : 'inf' ?>"><?= e($status) ?></span></td>
                 </tr>
             <?php endforeach; ?>
-        </tbody>
-        <tfoot>
-            <tr style="font-weight:700;background:#f0f0f0;">
-                <td colspan="4" class="text-end">TOTAL</td>
-                <td class="text-end"><?= format_currency_id($totalNominal) ?></td>
-                <td colspan="2"></td>
-            </tr>
-        </tfoot>
-    </table>
+            <?php if ($rows === []): ?>
+                <tr><td colspan="7" class="text-end" style="padding:20px;color:var(--text-muted,#64748b);font-style:italic;text-align:center;">Tidak ada data</td></tr>
+            <?php endif; ?>
+            </tbody>
+            <?php if ($rows !== []): ?>
+            <tfoot>
+                <tr>
+                    <td colspan="4" class="text-end">TOTAL</td>
+                    <td class="text-end"><?= format_currency_id($totalNominal) ?></td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+            <?php endif; ?>
+        </table>
+    </div>
 
-    <?php if ($autoPrint): ?>
-        <script>
-            window.onload = function() {
-                window.print();
-            };
-        </script>
-    <?php endif; ?>
+    <div class="rpt-footer">Dicetak oleh <?= e((string)($auth['name'] ?? 'sistem')) ?> &mdash; <?= date('d/m/Y H:i:s') ?></div>
+</div>
+<?php if ($autoPrint): ?>
+<script>
+window.addEventListener('load', function () { window.print(); });
+window.addEventListener('afterprint', function () { window.history.back(); });
+</script>
+<?php else: ?>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.createElement('button');
+    btn.textContent = '\u2190 Kembali';
+    btn.onclick = function () { window.history.back(); };
+    btn.style.cssText = 'position:fixed;top:12px;left:12px;padding:8px 14px;background:#475569;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,.15);';
+    document.body.appendChild(btn);
+});
+</script>
+<?php endif; ?>
 </body>
-
 </html>

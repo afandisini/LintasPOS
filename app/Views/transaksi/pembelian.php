@@ -55,6 +55,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
     <div class="keu-tab-wrap mb-3 anim">
         <a class="keu-tab-link is-active" href="#" data-purchase-tab="pembelian"><i class="bi bi-bag-check"></i><span>Pembelian</span></a>
         <a class="keu-tab-link" href="#" data-purchase-tab="po"><i class="bi bi-file-earmark-text"></i><span>PO (Purchase Order)</span></a>
+        <a class="keu-tab-link" href="#" data-purchase-tab="hutang"><i class="bi bi-journal-text"></i><span>Hutang Supplier</span></a>
         <a class="keu-tab-link" href="#" data-purchase-tab="history"><i class="bi bi-clock-history"></i><span>History</span></a>
     </div>
 
@@ -172,7 +173,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                     </div>
                     <div class="row">
                         <div class="col-sm-7">
-                            <small class="text-muted small" id="purchaseSaldoInfo">Jika saldo kas tidak cukup, checkout otomatis menjadi PO.</small>
+                            <small class="text-muted small" id="purchaseSaldoInfo">Jika metode Cash, saldo kas wajib cukup. Jika Termin, sisa otomatis menjadi hutang supplier.</small>
                         </div>
                         <div class="col-sm-5">
                             <button type="button" class="btn-g btn-sm pos-modal-quick-btn" data-cm-open="cmQuickModalPembelian"><i class="bi bi-plus-circle me-1"></i> Tambah Modal Cepat</button>
@@ -194,7 +195,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                             </a>
                         </div>
                         <select class="fi" id="purchaseSupplier" name="supplier_id" required>
-                            <option value="0">Supplier Umum</option>
+                            <option value="" selected disabled>Pilih Supplier</option>
                             <?php foreach ($supplierOptions as $item): ?>
                                 <?php if (!is_array($item)) {
                                     continue;
@@ -222,6 +223,11 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                     <div class="fg">
                         <label class="fl" for="purchaseBayar">Nominal Bayar</label>
                         <input class="fi" id="purchaseBayar" type="number" min="0" name="bayar" value="<?= e((string) ((int) ((string) ($summary['grand_total'] ?? '0')))) ?>" required placeholder="Isi 0 jika belum bayar (tempo)">
+                    </div>
+
+                    <div class="fg" id="purchaseDueDateWrap" style="display:none;">
+                        <label class="fl" for="purchaseDueDate">Jatuh Tempo</label>
+                        <input class="fi" id="purchaseDueDate" type="date" name="due_date" value="<?= e(date('Y-m-d', strtotime('+14 days'))) ?>" placeholder="Tanggal jatuh tempo hutang">
                     </div>
 
                     <div class="fg">
@@ -274,6 +280,40 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
             <div class="small text-muted mb-2">Riwayat pembelian yang berhasil diproses. Transaksi gagal yang hanya masuk PO tidak ditampilkan.</div>
             <div id="purchaseHistoryContainer">
                 <div class="text-muted small">Memuat histori...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel anim" data-purchase-pane="hutang" style="display:none;">
+        <div class="panel-head">
+            <span class="panel-title"><i class="bi bi-journal-text"></i> Hutang Supplier</span>
+            <button type="button" class="btn-g btn-sm" data-purchase-debt-refresh><i class="bi bi-arrow-repeat"></i> Refresh</button>
+        </div>
+        <div class="panel-body">
+            <div class="small text-muted mb-2">Daftar hutang aktif berdasarkan pembelian/receipt yang belum lunas.</div>
+            <div class="dt-wrap generated-dt-wrap">
+                <table class="dtable w-100 nowrap" id="purchaseDebtTable">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>No.Hutang</th>
+                            <th>Tanggal</th>
+                            <th>Supplier</th>
+                            <th>No.Pembelian</th>
+                            <th>Total</th>
+                            <th>Bayar</th>
+                            <th>Sisa</th>
+                            <th>Jatuh Tempo</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="11" class="text-muted">Memuat data...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -514,6 +554,102 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
             </form>
         </div>
     </div>
+
+    <div class="cm-bg" id="cmDebtView" data-cm-bg>
+        <div class="panel cm-box cm-box-lg" role="dialog" aria-modal="true" aria-labelledby="cmDebtViewTitle">
+            <div class="panel-head">
+                <span class="panel-title" id="cmDebtViewTitle"><i class="bi bi-journal-text me-1"></i> Detail Hutang Supplier</span>
+                <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="panel-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fl">No.Hutang</label>
+                            <div class="small fw-light" id="debtViewNo">-</div>
+                        </div>
+                        <div class="fg">
+                            <label class="fl">Supplier</label>
+                            <div class="small fw-light" id="debtViewSupplier">-</div>
+                        </div>
+                        <div class="fg">
+                            <label class="fl">No.Pembelian</label>
+                            <div class="small fw-light" id="debtViewPurchase">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fl">Total</label>
+                            <div class="small fw-light" id="debtViewTotal">-</div>
+                        </div>
+                        <div class="fg">
+                            <label class="fl">Sisa</label>
+                            <div class="small fw-light" id="debtViewRemaining">-</div>
+                        </div>
+                        <div class="fg">
+                            <label class="fl">Jatuh Tempo</label>
+                            <div class="small fw-light" id="debtViewDueDate">-</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <label class="fl">Riwayat Pembayaran</label>
+                    <div class="dt-wrap">
+                        <table class="dtable w-100 nowrap">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>No.Bayar</th>
+                                    <th>Tanggal</th>
+                                    <th>Metode</th>
+                                    <th>Nominal</th>
+                                    <th>Petugas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="debtPaymentHistoryBody">
+                                <tr><td colspan="6" class="text-muted">Belum ada pembayaran.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="cm-foot">
+                <button type="button" class="btn-g" data-cm-close>Tutup</button>
+                <button type="button" class="btn-a" id="btnOpenDebtPay"><i class="bi bi-cash-stack"></i> Bayar Hutang</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="cm-bg" id="cmDebtPay" data-cm-bg>
+        <div class="panel cm-box" role="dialog" aria-modal="true" aria-labelledby="cmDebtPayTitle">
+            <form method="post" action="/transaksi/pembelian/hutang/bayar" id="formDebtPay">
+                <?= raw(csrf_field()) ?>
+                <input type="hidden" name="supplier_debt_id" id="debtPayId" value="0">
+                <div class="panel-head">
+                    <span class="panel-title" id="cmDebtPayTitle"><i class="bi bi-cash-stack me-1"></i> Bayar Hutang Supplier</span>
+                    <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="panel-body">
+                    <div class="fg">
+                        <label class="fl">Sisa Hutang</label>
+                        <div class="small fw-light" id="debtPayRemainingLabel">-</div>
+                    </div>
+                    <div class="fg">
+                        <label class="fl" for="debtPayAmount">Nominal Bayar</label>
+                        <input class="fi" type="number" min="1" id="debtPayAmount" name="amount" placeholder="Masukkan nominal pembayaran" required>
+                    </div>
+                    <div class="fg" style="margin-bottom:0;">
+                        <label class="fl" for="debtPayNotes">Keterangan</label>
+                        <textarea class="fi" id="debtPayNotes" name="notes" rows="3" placeholder="Catatan pembayaran hutang"></textarea>
+                    </div>
+                </div>
+                <div class="cm-foot">
+                    <button type="button" class="btn-g" data-cm-close>Batal</button>
+                    <button type="submit" class="btn-a"><i class="bi bi-check2-circle"></i> Simpan Pembayaran</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </main>
 
 <?= raw(view('partials/shared/toast')) ?>
@@ -576,6 +712,9 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
         var poRowsMap = {};
         var poTable = null;
         var purchaseHistoryLoaded = false;
+        var debtRowsMap = {};
+        var debtTable = null;
+        var purchaseDebtLoaded = false;
 
         function formatRp(n) {
             n = parseInt(n, 10) || 0;
@@ -696,6 +835,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
         function setPurchaseTab(tab) {
             var next = 'pembelian';
             if (tab === 'po') next = 'po';
+            if (tab === 'hutang') next = 'hutang';
             if (tab === 'history') next = 'history';
             document.querySelectorAll('[data-purchase-tab]').forEach(function(btn) {
                 btn.classList.toggle('is-active', btn.getAttribute('data-purchase-tab') === next);
@@ -705,6 +845,17 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
             });
             if (next === 'po') {
                 initPoTable();
+                return;
+            }
+            if (next === 'hutang') {
+                initDebtTable();
+                if (debtTable && typeof debtTable.columns === 'function') {
+                    setTimeout(function() {
+                        if (debtTable && typeof debtTable.columns === 'function') {
+                            debtTable.columns.adjust().draw(false);
+                        }
+                    }, 0);
+                }
                 return;
             }
             if (next === 'history' && !purchaseHistoryLoaded) {
@@ -735,6 +886,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                 });
             });
             var tableRows = allRows.map(function(row, idx) {
+                var payStatus = String(row.payment_status || row.status_bayar || '-');
                 return '<tr>' +
                     '<td>' + (idx + 1) + '</td>' +
                     '<td><strong>' + escapeHtml(String(row.no_trx || '-')) + '</strong><br><span class="small text-muted">' + escapeHtml(formatDateTimeLabel(row.created_at || row.tanggal_input || '')) + '</span></td>' +
@@ -742,12 +894,14 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                     '<td>' + escapeHtml(String(row.kasir || '-')) + '</td>' +
                     '<td class="text-center">' + escapeHtml(String(row.jumlah || 0)) + '</td>' +
                     '<td class="text-end">' + formatRp(row.total || 0) + '</td>' +
+                    '<td class="text-center">' + escapeHtml(payStatus) + '</td>' +
+                    '<td class="text-end">' + formatRp(row.remaining_amount || 0) + '</td>' +
                     '</tr>';
             }).join('');
             container.innerHTML = summaryHtml +
                 '<div class="table-responsive" style="overflow-x:auto;">' +
                 '<table class="dtable w-100">' +
-                '<thead><tr><th style="width:56px;">No</th><th>No.Transaksi</th><th>Supplier</th><th>Petugas</th><th style="width:80px;">Qty</th><th style="width:130px;">Total</th></tr></thead>' +
+                '<thead><tr><th style="width:56px;">No</th><th>No.Transaksi</th><th>Supplier</th><th>Petugas</th><th style="width:80px;">Qty</th><th style="width:130px;">Total</th><th>Status</th><th style="width:130px;">Sisa</th></tr></thead>' +
                 '<tbody>' + tableRows + '</tbody>' +
                 '</table></div>';
         }
@@ -846,6 +1000,186 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                     }
                 ]
             });
+        }
+
+        function renderDebtStatus(status, label) {
+            var cls = 'sbadge inf';
+            if (status === 'paid') cls = 'sbadge suc';
+            if (status === 'partial') cls = 'sbadge wrn';
+            if (status === 'unpaid') cls = 'sbadge dng';
+            return '<span class="' + cls + '">' + escapeHtml(label || status || '-') + '</span>';
+        }
+
+        function initDebtTable() {
+            if (typeof window.jQuery === 'undefined' || typeof window.jQuery.fn.DataTable === 'undefined') return;
+            if (debtTable) {
+                debtTable.ajax.reload(null, false);
+                return;
+            }
+
+            debtTable = window.jQuery('#purchaseDebtTable').DataTable({
+                processing: true,
+                serverSide: true,
+                searching: true,
+                ordering: true,
+                lengthChange: true,
+                pageLength: 10,
+                scrollX: true,
+                language: {
+                    url: <?= json_encode(base_url('assets/vendor/datatables/id.json'), JSON_UNESCAPED_UNICODE) ?>
+                },
+                ajax: {
+                    url: '/transaksi/pembelian/hutang/datatable',
+                    type: 'GET'
+                },
+                columns: [{
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        render: function(data, type, row, meta) {
+                            var start = meta && meta.settings && meta.settings._iDisplayStart ? meta.settings._iDisplayStart : 0;
+                            return start + meta.row + 1;
+                        }
+                    },
+                    {
+                        data: 'debt_no',
+                        defaultContent: '-'
+                    },
+                    {
+                        data: 'debt_date',
+                        defaultContent: '-'
+                    },
+                    {
+                        data: 'nama_supplier',
+                        defaultContent: '-'
+                    },
+                    {
+                        data: 'no_trx',
+                        defaultContent: '-'
+                    },
+                    {
+                        data: 'total_amount',
+                        className: 'text-end',
+                        render: function(d) {
+                            return formatRp(d);
+                        }
+                    },
+                    {
+                        data: 'paid_amount',
+                        className: 'text-end',
+                        render: function(d) {
+                            return formatRp(d);
+                        }
+                    },
+                    {
+                        data: 'remaining_amount',
+                        className: 'text-end',
+                        render: function(d) {
+                            return formatRp(d);
+                        }
+                    },
+                    {
+                        data: 'due_date',
+                        defaultContent: '-'
+                    },
+                    {
+                        data: null,
+                        defaultContent: '-',
+                        render: function(data, type, row) {
+                            return renderDebtStatus(String(row.status || ''), String(row.status || ''));
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        render: function(data, type, row) {
+                            var id = parseInt(row.id || 0, 10) || 0;
+                            debtRowsMap[id] = row;
+                            var html = '<div class="d-flex gap-2">';
+                            html += '<button type="button" class="btn-g btn-sm btn-debt-view" data-debt-id="' + id + '"><i class="bi bi-eye"></i></button>';
+                            if (parseInt(row.remaining_amount || 0, 10) > 0) {
+                                html += '<button type="button" class="btn-a btn-sm btn-debt-pay" data-debt-id="' + id + '"><i class="bi bi-cash-stack"></i></button>';
+                            }
+                            html += '</div>';
+                            return html;
+                        }
+                    }
+                ]
+            });
+            if (debtTable && typeof debtTable.columns === 'function') {
+                setTimeout(function() {
+                    if (debtTable && typeof debtTable.columns === 'function') {
+                        debtTable.columns.adjust().draw(false);
+                    }
+                }, 0);
+            }
+        }
+
+        function renderDebtPayments(payments) {
+            var rows = Array.isArray(payments) ? payments : [];
+            var body = document.getElementById('debtPaymentHistoryBody');
+            if (!body) return;
+            if (rows.length === 0) {
+                body.innerHTML = '<tr><td colspan="6" class="text-muted">Belum ada pembayaran.</td></tr>';
+                return;
+            }
+            body.innerHTML = rows.map(function(row, idx) {
+                return '<tr>' +
+                    '<td>' + (idx + 1) + '</td>' +
+                    '<td>' + escapeHtml(String(row.payment_no || '-')) + '</td>' +
+                    '<td>' + escapeHtml(formatDateTimeLabel(row.payment_date || '')) + '</td>' +
+                    '<td>' + escapeHtml(String(row.payment_method || '-')) + '</td>' +
+                    '<td class="text-end">' + formatRp(row.amount || 0) + '</td>' +
+                    '<td>' + escapeHtml(String(row.created_by_name || '-')) + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        function fillDebtView(debt, payments) {
+            var data = debt || {};
+            var total = parseInt(data.total_amount || 0, 10) || 0;
+            var paid = parseInt(data.paid_amount || 0, 10) || 0;
+            var remaining = parseInt(data.remaining_amount || 0, 10) || 0;
+            var noEl = document.getElementById('debtViewNo');
+            var supplierEl = document.getElementById('debtViewSupplier');
+            var purchaseEl = document.getElementById('debtViewPurchase');
+            var totalEl = document.getElementById('debtViewTotal');
+            var remainingEl = document.getElementById('debtViewRemaining');
+            var dueEl = document.getElementById('debtViewDueDate');
+            var payId = document.getElementById('debtPayId');
+            var payRemaining = document.getElementById('debtPayRemainingLabel');
+            var payAmount = document.getElementById('debtPayAmount');
+            if (noEl) noEl.textContent = String(data.debt_no || '-');
+            if (supplierEl) supplierEl.textContent = String(data.nama_supplier || '-');
+            if (purchaseEl) purchaseEl.textContent = String(data.no_trx || '-');
+            if (totalEl) totalEl.textContent = formatRp(total);
+            if (remainingEl) remainingEl.textContent = formatRp(remaining);
+            if (dueEl) dueEl.textContent = data.due_date ? formatDateLabel(data.due_date) : '-';
+            if (payId) payId.value = String(data.id || 0);
+            if (payRemaining) payRemaining.textContent = formatRp(remaining);
+            if (payAmount) payAmount.max = String(remaining > 0 ? remaining : 0);
+            if (payAmount) payAmount.value = remaining > 0 ? String(remaining) : '';
+            renderDebtPayments(payments);
+        }
+
+        async function loadDebtDetail(debtId, openPayModal) {
+            if (!debtId) return;
+            try {
+                var resp = await fetch('/transaksi/pembelian/hutang/detail?debt_id=' + encodeURIComponent(String(debtId)), {
+                    method: 'GET'
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var payload = await resp.json();
+                fillDebtView(payload.data || {}, payload.payments || []);
+                if (openPayModal) {
+                    openModal('cmDebtPay');
+                } else {
+                    openModal('cmDebtView');
+                }
+            } catch (e) {
+                posToast('error', 'Gagal', 'Gagal memuat detail hutang supplier.');
+            }
         }
 
         function updatePickerState(modal) {
@@ -961,9 +1295,11 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
             // Update indikator saldo cukup/tidak
             var saldoEl = document.getElementById('purchaseSaldoKas');
             var infoEl = document.getElementById('purchaseSaldoInfo');
+            var methodEl = document.getElementById('purchaseMethod');
             var balanceRow = document.querySelector('.pos-balance-row');
             if (saldoEl && balanceRow) {
                 var saldo = parseInt(saldoEl.getAttribute('data-saldo') || '0', 10) || 0;
+                var methodVal = methodEl ? String(methodEl.value || '') : '';
                 balanceRow.classList.remove('pos-lebih', 'pos-kurang', 'pos-nol');
                 if (numeric === 0) {
                     balanceRow.classList.add('pos-nol');
@@ -972,7 +1308,41 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                     if (infoEl) infoEl.textContent = 'Saldo mencukupi. Pembelian akan langsung diproses.';
                 } else {
                     balanceRow.classList.add('pos-kurang');
-                    if (infoEl) infoEl.textContent = 'Saldo kas Rp ' + saldo.toLocaleString('id-ID') + ' tidak cukup untuk Rp ' + numeric.toLocaleString('id-ID') + '. Transaksi akan menjadi PO.';
+                    if (methodVal === 'Termin') {
+                        if (infoEl) infoEl.textContent = 'Saldo kas kurang untuk DP. Jika DP diisi, sistem akan cek saldo sesuai nominal bayar.';
+                    } else if (infoEl) {
+                        infoEl.textContent = 'Saldo kas Rp ' + saldo.toLocaleString('id-ID') + ' tidak cukup untuk pembelian Cash Rp ' + numeric.toLocaleString('id-ID') + '.';
+                    }
+                }
+            }
+
+            syncPurchasePaymentFields(false);
+        }
+
+        function syncPurchasePaymentFields(force) {
+            var method = document.getElementById('purchaseMethod');
+            var dueWrap = document.getElementById('purchaseDueDateWrap');
+            var dueInput = document.getElementById('purchaseDueDate');
+            var bayar = document.getElementById('purchaseBayar');
+            var grand = document.getElementById('purchaseGrandTotal');
+            if (!method || !dueWrap || !dueInput || !bayar || !grand) return;
+
+            var total = parseInt(grand.getAttribute('data-value') || '0', 10) || 0;
+            var selected = String(method.value || '');
+            var isTermin = selected === 'Termin';
+
+            dueWrap.style.display = isTermin ? '' : 'none';
+            dueInput.required = isTermin;
+
+            if (isTermin) {
+                bayar.placeholder = 'Isi nominal DP atau 0 jika belum bayar';
+                if (force || !bayar._userEdited) {
+                    bayar.value = '0';
+                }
+            } else {
+                bayar.placeholder = 'Isi nominal pembayaran';
+                if (force || !bayar._userEdited) {
+                    bayar.value = String(total);
                 }
             }
         }
@@ -1120,6 +1490,14 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                 return;
             }
 
+            var debtRefreshBtn = e.target.closest('[data-purchase-debt-refresh]');
+            if (debtRefreshBtn) {
+                e.preventDefault();
+                initDebtTable();
+                if (debtTable) debtTable.ajax.reload(null, false);
+                return;
+            }
+
             var poViewBtn = e.target.closest('.btn-po-view');
             if (poViewBtn) {
                 e.preventDefault();
@@ -1171,6 +1549,30 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                 if (deleteId) deleteId.value = String(poIdDelete);
                 if (deleteLabel) deleteLabel.textContent = String((poDelete && poDelete.po_no_reg) || (poDelete && poDelete.no_trx) || '-');
                 openModal('cmPoDelete');
+                return;
+            }
+
+            var debtViewBtn = e.target.closest('.btn-debt-view');
+            if (debtViewBtn) {
+                e.preventDefault();
+                var debtIdView = parseInt(debtViewBtn.getAttribute('data-debt-id') || '0', 10) || 0;
+                loadDebtDetail(debtIdView, false);
+                return;
+            }
+
+            var debtPayBtn = e.target.closest('.btn-debt-pay');
+            if (debtPayBtn) {
+                e.preventDefault();
+                var debtIdPay = parseInt(debtPayBtn.getAttribute('data-debt-id') || '0', 10) || 0;
+                loadDebtDetail(debtIdPay, true).then(function() {
+                });
+                return;
+            }
+
+            var debtOpenPayBtn = e.target.closest('#btnOpenDebtPay');
+            if (debtOpenPayBtn) {
+                e.preventDefault();
+                openModal('cmDebtPay');
                 return;
             }
 
@@ -1316,16 +1718,25 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
 
         function initPurchaseBayarInput() {
             var bayar = document.getElementById('purchaseBayar');
+            var method = document.getElementById('purchaseMethod');
             if (!bayar || bayar._purchaseInit) return;
             bayar._purchaseInit = true;
             bayar._userEdited = false;
             bayar.addEventListener('input', function() {
                 this._userEdited = true;
             });
+            if (method && !method._purchaseInit) {
+                method._purchaseInit = true;
+                method.addEventListener('change', function() {
+                    syncPurchasePaymentFields(true);
+                });
+            }
+            syncPurchasePaymentFields(false);
         }
 
         initPurchaseBayarInput();
         syncPurchaseTotalsFromDom();
+        syncPurchasePaymentFields(false);
         initPurchaseQtyForms();
         setPurchaseTab('pembelian');
     })();

@@ -45,13 +45,14 @@ if (($profileAvatar['has_image'] ?? false) !== true) {
                         <?= raw(csrf_field()) ?>
 
                         <div class="fg">
-                            <label class="fl" for="name">Nama</label>
-                            <input class="fi" id="name" type="text" name="name" maxlength="255" required placeholder="Nama lengkap" value="<?= e((string) ($profile['name'] ?? '')) ?>">
+                            <label class="fl" for="username">Username</label>
+                            <input class="fi" id="username" type="text" name="username" maxlength="255" readonly placeholder="Username login" value="<?= e((string) ($profile['user'] ?? '')) ?>">
+                            <div class="u-help">Username tidak dapat diubah.</div>
                         </div>
 
                         <div class="fg">
-                            <label class="fl" for="username">Username</label>
-                            <input class="fi" id="username" type="text" name="username" maxlength="255" required placeholder="Username login" value="<?= e((string) ($profile['user'] ?? '')) ?>">
+                            <label class="fl" for="name">Nama</label>
+                            <input class="fi" id="name" type="text" name="name" maxlength="255" required placeholder="Nama lengkap" value="<?= e((string) ($profile['name'] ?? '')) ?>">
                         </div>
 
                         <div class="fg">

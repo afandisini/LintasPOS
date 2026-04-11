@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\Database;
+use App\Services\SecurityLogger;
 use System\Http\Request;
 use System\Http\Response;
 use Throwable;
@@ -221,6 +222,8 @@ class DiskonController
             $valueSql = ':' . implode(',:', $insertColumns);
             $stmt = $pdo->prepare('INSERT INTO `diskon` (' . $columnSql . ') VALUES (' . $valueSql . ')');
             $stmt->execute($params);
+            $newId = (int) $pdo->lastInsertId();
+            SecurityLogger::logAudit('diskon', 'CREATE', 'diskon', (string) $newId, null, $params);
             toast_add('Data Diskon berhasil ditambahkan.', 'success');
         } catch (Throwable) {
             toast_add('Gagal menambahkan data Diskon.', 'error');
@@ -292,6 +295,11 @@ class DiskonController
             $sql = 'UPDATE `diskon` SET ' . implode(', ', $setParts) . ' WHERE id = :id';
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
+            $beforeStmt = $pdo->prepare('SELECT * FROM `diskon` WHERE id = :id LIMIT 1');
+            $beforeStmt->execute(['id' => $recordId]);
+            $before = $beforeStmt->fetch(\PDO::FETCH_ASSOC);
+            SecurityLogger::logAudit('diskon', 'UPDATE', 'diskon', (string) $recordId,
+                is_array($before) ? $before : null, $params);
             toast_add('Data Diskon berhasil diperbarui.', 'success');
         } catch (Throwable) {
             toast_add('Gagal memperbarui data Diskon.', 'error');
@@ -310,8 +318,13 @@ class DiskonController
 
         try {
             $pdo = Database::connection();
+            $beforeStmt = $pdo->prepare('SELECT * FROM `diskon` WHERE id = :id LIMIT 1');
+            $beforeStmt->execute(['id' => $recordId]);
+            $before = $beforeStmt->fetch(\PDO::FETCH_ASSOC);
             $stmt = $pdo->prepare('DELETE FROM `diskon` WHERE id = :id');
             $stmt->execute(['id' => $recordId]);
+            SecurityLogger::logAudit('diskon', 'DELETE', 'diskon', (string) $recordId,
+                is_array($before) ? $before : null, null);
             toast_add('Data Diskon berhasil dihapus.', 'success');
         } catch (Throwable) {
             toast_add('Gagal menghapus data Diskon.', 'error');

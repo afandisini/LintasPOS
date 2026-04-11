@@ -213,6 +213,27 @@ $dataTablesHead = raw(
 
 <?= raw(view('partials/shared/toast')) ?>
 
+<!-- Modal Hak Akses -->
+<div class="cm-bg" id="cmHakAkses" data-cm-bg>
+    <div class="panel cm-box cm-box-lg" role="dialog" aria-modal="true" aria-labelledby="cmHakAksesTitle" style="max-width:680px">
+        <div class="panel-head">
+            <span class="panel-title" id="cmHakAksesTitle">Hak Akses — <span id="hakAksesUserName">-</span></span>
+            <button type="button" class="cm-x" data-cm-close aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="panel-body" style="max-height:65vh;overflow-y:auto;padding:0">
+            <div id="hakAksesBody">
+                <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">
+                    <i class="bi bi-arrow-repeat spin-icon"></i> Memuat...
+                </div>
+            </div>
+        </div>
+        <div class="cm-foot">
+            <button type="button" class="btn-g" data-cm-close>Batal</button>
+            <button type="button" class="btn-a" id="btnSaveHakAkses"><i class="bi bi-shield-check"></i> Simpan Akses</button>
+        </div>
+    </div>
+</div>
+
 <?= raw(helper_toast_script()) ?>
 <?= raw(module_script('Dashboard/js/dashboard.js')) ?>
 <script src="<?= e(base_url('assets/vendor/jquery/jquery-3.7.1.min.js')) ?>"></script>

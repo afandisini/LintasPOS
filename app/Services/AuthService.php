@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use RuntimeException;
+use App\Services\RateLimitDetector;
 
 class AuthService
 {
@@ -58,6 +59,8 @@ class AuthService
 
         if (!$verified || !is_array($user)) {
             $this->recordFailure($throttle, $key, $now);
+            // Phase 2: rate limit brute force detection
+            RateLimitDetector::checkLoginBruteForce($ipAddress);
             return [
                 'ok' => false,
                 'message' => 'Kredensial tidak valid.',
@@ -66,8 +69,8 @@ class AuthService
         }
 
         if ((string) ($user['active'] ?? '0') !== '1') {
-            // Pesan generik agar tidak bocorkan info akun nonaktif vs salah password
             $this->recordFailure($throttle, $key, $now);
+            RateLimitDetector::checkLoginBruteForce($ipAddress);
             return [
                 'ok' => false,
                 'message' => 'Kredensial tidak valid.',
@@ -77,6 +80,8 @@ class AuthService
 
         unset($throttle[$key]);
         $this->writeThrottle($throttle);
+        // Reset rate limit counter on successful login
+        RateLimitDetector::reset('login_fail', $ipAddress);
 
         if (password_needs_rehash($passwordHash, PASSWORD_DEFAULT)) {
             $update = $pdo->prepare('UPDATE users SET pass = :pass WHERE id = :id');

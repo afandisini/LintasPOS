@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Services\Database;
 use App\Services\KeuanganService;
+use App\Services\SupplierDebtService;
 use PDO;
 use RuntimeException;
 use System\Http\Request;
@@ -639,10 +640,14 @@ class TransaksiController
             $pdo->commit();
 
             try {
+                $akunKasId = (new KeuanganService($pdo))->resolveAkunIdByKode('1101');
+                if ($akunKasId <= 0) {
+                    throw new RuntimeException('Akun kas/bank belum tersedia.');
+                }
                 (new KeuanganService($pdo))->catatMutasi([
                     'tanggal' => $tanggal,
                     'no_ref' => $noTrx,
-                    'kode_akun' => '4101',
+                    'akun_keuangan_id' => $akunKasId,
                     'jenis' => 'debit',
                     'tipe_arus' => 'pemasukan',
                     'nominal' => $grandTotal,
@@ -988,28 +993,27 @@ class TransaksiController
         try {
             $pdo = Database::connection();
             $memberId = (int) ($_SESSION['auth']['id'] ?? 0);
-            $stmtAkunModal = $pdo->query("SELECT id FROM akun_keuangan WHERE deleted_at IS NULL AND status = 1 AND (is_modal = 1 OR kode_akun = '3101') ORDER BY is_modal DESC, id ASC LIMIT 1");
-            $akunModal = $stmtAkunModal->fetch(PDO::FETCH_ASSOC);
-            $akunModalId = is_array($akunModal) ? (int) ($akunModal['id'] ?? 0) : 0;
-            if ($akunModalId <= 0) {
-                throw new RuntimeException('Akun MODAL belum tersedia. Cek master akun keuangan.');
+            $debtService = new SupplierDebtService($pdo);
+            $akunKasId = $debtService->resolveKasAkunId();
+            if ($akunKasId <= 0) {
+                throw new RuntimeException('Akun KAS belum tersedia. Cek master akun keuangan.');
             }
 
             (new KeuanganService($pdo))->catatMutasi([
                 'tanggal' => $tanggal,
                 'no_ref' => 'MODAL-' . date('YmdHis'),
-                'akun_keuangan_id' => $akunModalId,
+                'akun_keuangan_id' => $akunKasId,
                 'jenis' => 'debit',
                 'tipe_arus' => 'pemasukan',
                 'nominal' => $nominal,
                 'sumber_tipe' => 'modal_cepat_pembelian',
                 'metode_pembayaran' => 'Cash',
-                'deskripsi' => $deskripsi !== '' ? $deskripsi : 'Tambah modal cepat dari halaman pembelian',
+                'deskripsi' => $deskripsi !== '' ? $deskripsi : 'Tambah modal cepat ke akun kas dari halaman pembelian',
                 'status' => 'posted',
                 'created_by' => $memberId,
             ]);
 
-            toast_add('Tambah modal berhasil dicatat ke pemasukan akun MODAL.', 'success');
+            toast_add('Tambah modal berhasil dicatat ke pemasukan akun KAS.', 'success');
         } catch (Throwable $e) {
             toast_add($e->getMessage() !== '' ? $e->getMessage() : 'Tambah modal cepat gagal.', 'error');
         }
@@ -1166,7 +1170,7 @@ class TransaksiController
                 throw new RuntimeException('Fitur PO belum aktif. Jalankan migration PO terlebih dahulu.');
             }
             $pdo->beginTransaction();
-            $stmtPo = $pdo->prepare('SELECT id, no_trx, beli, po_status, po_deleted_at FROM pembelian WHERE id = :id LIMIT 1 FOR UPDATE');
+            $stmtPo = $pdo->prepare('SELECT id, no_trx, beli, po_status, po_deleted_at, supplier_id, nm_supplier, due_date FROM pembelian WHERE id = :id LIMIT 1 FOR UPDATE');
             $stmtPo->execute(['id' => $poId]);
             $po = $stmtPo->fetch(PDO::FETCH_ASSOC);
             if (!is_array($po) || (string) ($po['po_deleted_at'] ?? '') !== '') {
@@ -1196,21 +1200,25 @@ class TransaksiController
                 throw new RuntimeException('Nilai PO tidak valid.');
             }
 
-            $saldoKas = (new KeuanganService($pdo))->saldoKasSaatIni();
-            if ($saldoKas < $totalPo) {
-                throw new RuntimeException(
-                    'Saldo kas tidak mencukupi untuk approve PO ini. '
-                        . 'Saldo saat ini: Rp ' . number_format($saldoKas, 0, ',', '.') . ', '
-                        . 'dibutuhkan: Rp ' . number_format($totalPo, 0, ',', '.') . '. '
-                        . 'Tambah modal/kas terlebih dahulu.'
-                );
-            }
-
             $stmtDet = $pdo->prepare('SELECT id_barang, qty, beli FROM pembelian_detail WHERE no_trx = :no_trx ORDER BY id ASC');
             $stmtDet->execute(['no_trx' => (string) ($po['no_trx'] ?? '')]);
             $details = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
             if (!is_array($details) || $details === []) {
                 throw new RuntimeException('Detail PO tidak ditemukan.');
+            }
+
+            $supplierId = max(0, (int) ($po['supplier_id'] ?? 0));
+            if ($supplierId <= 0) {
+                $supplierName = trim((string) ($po['nm_supplier'] ?? ''));
+                if ($supplierName !== '') {
+                    $stmtSupplier = $pdo->prepare('SELECT id FROM supplier WHERE nama_supplier = :nama_supplier LIMIT 1');
+                    $stmtSupplier->execute(['nama_supplier' => $supplierName]);
+                    $supplierRow = $stmtSupplier->fetch(PDO::FETCH_ASSOC);
+                    $supplierId = is_array($supplierRow) ? (int) ($supplierRow['id'] ?? 0) : 0;
+                }
+            }
+            if ($supplierId <= 0) {
+                throw new RuntimeException('Supplier PO belum valid. Lengkapi supplier terlebih dahulu.');
             }
 
             $stmtUpdateBarang = $pdo->prepare('UPDATE barang SET stok = stok + :qty, harga_beli = :harga_beli, updated_at = NOW() WHERE id = :id');
@@ -1229,33 +1237,48 @@ class TransaksiController
                 ]);
             }
 
-            $stmtAccept = $pdo->prepare("UPDATE pembelian SET status_bayar = 'Lunas', po_status = 'diterima', po_review_note = :po_review_note, po_review_by = :po_review_by, po_review_at = NOW() WHERE id = :id");
+            $dueDate = trim((string) ($po['due_date'] ?? ''));
+            if ($dueDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dueDate)) {
+                $dueDate = date('Y-m-d', strtotime('+14 days'));
+            }
+
+            $stmtAccept = $pdo->prepare("UPDATE pembelian
+                SET status_bayar = 'Hutang',
+                    payment_status = 'unpaid',
+                    paid_amount = 0,
+                    remaining_amount = :remaining_amount,
+                    due_date = :due_date,
+                    po_status = 'diterima',
+                    po_review_note = :po_review_note,
+                    po_review_by = :po_review_by,
+                    po_review_at = NOW()
+                WHERE id = :id");
             $stmtAccept->execute([
                 'id' => $poId,
+                'remaining_amount' => $totalPo,
+                'due_date' => $dueDate,
                 'po_review_note' => $poNote !== '' ? $poNote : null,
                 'po_review_by' => $memberId > 0 ? $memberId : null,
             ]);
 
-            $stmtSyncDet = $pdo->prepare("UPDATE pembelian_detail SET status_bayar = 'Lunas' WHERE no_trx = :no_trx");
+            $stmtSyncDet = $pdo->prepare("UPDATE pembelian_detail SET status_bayar = 'Hutang' WHERE no_trx = :no_trx");
             $stmtSyncDet->execute(['no_trx' => (string) ($po['no_trx'] ?? '')]);
 
-            (new KeuanganService($pdo))->catatMutasi([
-                'tanggal' => date('Y-m-d'),
-                'no_ref' => (string) ($po['no_trx'] ?? ''),
-                'kode_akun' => '5102',
-                'jenis' => 'kredit',
-                'tipe_arus' => 'pengeluaran',
-                'nominal' => $totalPo,
-                'sumber_tipe' => 'approve_po_pembelian',
-                'sumber_id' => $poId,
-                'metode_pembayaran' => 'Cash',
-                'deskripsi' => 'Approve PO ' . (string) ($po['no_trx'] ?? ''),
-                'status' => 'posted',
-                'created_by' => $memberId > 0 ? $memberId : null,
+            $debtService = new SupplierDebtService($pdo);
+            $debtService->createDebt([
+                'purchase_id' => $poId,
+                'supplier_id' => $supplierId,
+                'debt_no' => 'UTANG-' . (string) ($po['no_trx'] ?? $poId),
+                'debt_date' => date('Y-m-d'),
+                'total_amount' => $totalPo,
+                'paid_amount' => 0,
+                'due_date' => $dueDate,
+                'status' => 'unpaid',
+                'notes' => $poNote !== '' ? $poNote : (string) ($po['nm_supplier'] ?? ''),
             ]);
 
             $pdo->commit();
-            toast_add('PO berhasil diterima dan stok sudah ditambahkan.', 'success');
+            toast_add('PO berhasil diterima. Stok ditambahkan dan hutang supplier dicatat.', 'success');
         } catch (Throwable $e) {
             if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -1294,6 +1317,14 @@ class TransaksiController
                 throw new RuntimeException('Fitur PO belum aktif. Jalankan migration PO terlebih dahulu.');
             }
             $memberId = (int) ($auth['id'] ?? 0);
+            $stmtState = $pdo->prepare('SELECT po_status FROM pembelian WHERE id = :id LIMIT 1');
+            $stmtState->execute(['id' => $poId]);
+            $stateRow = $stmtState->fetch(PDO::FETCH_ASSOC);
+            $currentStatus = strtolower(trim((string) ($stateRow['po_status'] ?? 'pending')));
+            if ($currentStatus === 'diterima') {
+                throw new RuntimeException('PO yang sudah diterima tidak boleh dihapus. Gunakan reversal pada phase berikutnya.');
+            }
+
             $stmtDelete = $pdo->prepare('UPDATE pembelian SET po_deleted_at = NOW(), po_deleted_by = :po_deleted_by WHERE id = :id AND po_deleted_at IS NULL');
             $stmtDelete->execute([
                 'id' => $poId,
@@ -1318,9 +1349,18 @@ class TransaksiController
         $supplierId = max(0, (int) $request->input('supplier_id', '0'));
         $paymentMethod = trim((string) $request->input('payment_method', ''));
         $bayar = max(0, (int) $request->input('bayar', '0'));
+        $dueDate = trim((string) $request->input('due_date', ''));
         $keterangan = trim((string) $request->input('keterangan', ''));
         if (!in_array($paymentMethod, self::PURCHASE_PAYMENT_METHODS, true)) {
             toast_add('Metode pembayaran pembelian tidak valid.', 'error');
+            return Response::redirect('/transaksi/pembelian');
+        }
+        if ($supplierId <= 0) {
+            toast_add('Supplier wajib dipilih.', 'error');
+            return Response::redirect('/transaksi/pembelian');
+        }
+        if ($paymentMethod === 'Termin' && ($dueDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dueDate))) {
+            toast_add('Tanggal jatuh tempo wajib diisi untuk pembelian termin.', 'error');
             return Response::redirect('/transaksi/pembelian');
         }
 
@@ -1331,14 +1371,11 @@ class TransaksiController
                 throw new RuntimeException('Keranjang pembelian kosong.');
             }
 
-            $supplierName = 'Supplier Umum';
-            if ($supplierId > 0) {
-                $supplier = $this->findSupplier($pdo, $supplierId);
-                if ($supplier === null) {
-                    throw new RuntimeException('Supplier tidak ditemukan.');
-                }
-                $supplierName = (string) ($supplier['nama_supplier'] ?? 'Supplier Umum');
+            $supplier = $this->findSupplier($pdo, $supplierId);
+            if ($supplier === null) {
+                throw new RuntimeException('Supplier tidak ditemukan.');
             }
+            $supplierName = (string) ($supplier['nama_supplier'] ?? 'Supplier Umum');
 
             $pdo->beginTransaction();
             $normalized = [];
@@ -1346,6 +1383,7 @@ class TransaksiController
             $grandTotal = 0;
             $auth = $this->auth();
             $canEditHargaModal = $this->canEditHargaModal($auth);
+            $debtService = new SupplierDebtService($pdo);
 
             foreach ($items as $item) {
                 $barangId = (int) ($item['id_barang'] ?? 0);
@@ -1379,9 +1417,22 @@ class TransaksiController
             if ($grandTotal <= 0) {
                 throw new RuntimeException('Total pembelian harus lebih dari 0.');
             }
-            if ($paymentMethod === 'Cash' && $bayar < $grandTotal) {
-                throw new RuntimeException('Nominal bayar cash tidak boleh kurang dari total pembelian.');
+            if ($paymentMethod === 'Cash' && $bayar !== $grandTotal) {
+                throw new RuntimeException('Nominal bayar cash harus sama dengan total pembelian.');
             }
+            if ($paymentMethod === 'Termin' && $bayar > $grandTotal) {
+                throw new RuntimeException('Nominal bayar termin tidak boleh melebihi total pembelian.');
+            }
+
+            $paidAmount = min($grandTotal, $bayar);
+            $remainingAmount = max(0, $grandTotal - $paidAmount);
+            $paymentStatus = 'unpaid';
+            if ($remainingAmount <= 0) {
+                $paymentStatus = 'paid';
+            } elseif ($paidAmount > 0) {
+                $paymentStatus = 'partial';
+            }
+            $statusBayar = $paymentStatus === 'paid' ? 'Lunas' : 'Hutang';
 
             $saldoKas = 0.0;
             try {
@@ -1389,23 +1440,22 @@ class TransaksiController
             } catch (Throwable) {
                 $saldoKas = 0.0;
             }
-            $isPo = $saldoKas <= 0 || $saldoKas < $grandTotal;
-
-            $statusBayar = 'Hutang';
-            if (!$isPo && ($paymentMethod === 'Cash' || $bayar >= $grandTotal)) {
-                $statusBayar = 'Lunas';
+            if ($paidAmount > 0 && $saldoKas < $paidAmount) {
+                throw new RuntimeException(
+                    'Saldo kas tidak mencukupi untuk pembayaran awal. '
+                        . 'Saldo saat ini: Rp ' . number_format($saldoKas, 0, ',', '.') . ', '
+                        . 'dibutuhkan: Rp ' . number_format($paidAmount, 0, ',', '.') . '.'
+                );
             }
 
-            if (!$isPo) {
-                $updStok = $pdo->prepare('UPDATE barang SET stok = stok + :qty, harga_beli = :harga_beli, harga_jual = :harga_jual, updated_at = NOW() WHERE id = :id');
-                foreach ($normalized as $item) {
-                    $updStok->execute([
-                        'qty' => (int) $item['qty'],
-                        'harga_beli' => (int) $item['beli'],
-                        'harga_jual' => (int) $item['jual'],
-                        'id' => (int) $item['barang_id'],
-                    ]);
-                }
+            $updStok = $pdo->prepare('UPDATE barang SET stok = stok + :qty, harga_beli = :harga_beli, harga_jual = :harga_jual, updated_at = NOW() WHERE id = :id');
+            foreach ($normalized as $item) {
+                $updStok->execute([
+                    'qty' => (int) $item['qty'],
+                    'harga_beli' => (int) $item['beli'],
+                    'harga_jual' => (int) $item['jual'],
+                    'id' => (int) $item['barang_id'],
+                ]);
             }
 
             $noTrx = $this->generateNoTrxPembelian($pdo);
@@ -1417,19 +1467,28 @@ class TransaksiController
                 $keteranganFinal .= ' | ';
             }
             $keteranganFinal .= 'Metode: ' . $paymentMethod;
-            if ($isPo) {
-                $keteranganFinal .= ' | PO: Saldo kas Rp ' . number_format($saldoKas, 0, ',', '.') . ' < kebutuhan Rp ' . number_format($grandTotal, 0, ',', '.');
+            if ($paymentStatus !== 'paid') {
+                $keteranganFinal .= ' | Hutang supplier: Rp ' . number_format($remainingAmount, 0, ',', '.');
+            }
+            if ($paymentMethod === 'Termin') {
+                $keteranganFinal .= ' | Jatuh tempo: ' . $dueDate;
             }
 
-            $insHead = $pdo->prepare('INSERT INTO pembelian (nm_supplier, no_trx, id_member, jumlah, beli, keterangan, status_bayar, tanggal_input, created_at, periode) VALUES (:nm_supplier, :no_trx, :id_member, :jumlah, :beli, :keterangan, :status_bayar, :tanggal_input, NOW(), :periode)');
+            $insHead = $pdo->prepare('INSERT INTO pembelian (nm_supplier, supplier_id, no_trx, id_member, jumlah, beli, paid_amount, remaining_amount, due_date, payment_status, keterangan, status_bayar, payment_method, tanggal_input, created_at, periode) VALUES (:nm_supplier, :supplier_id, :no_trx, :id_member, :jumlah, :beli, :paid_amount, :remaining_amount, :due_date, :payment_status, :keterangan, :status_bayar, :payment_method, :tanggal_input, NOW(), :periode)');
             $insHead->execute([
                 'nm_supplier' => $supplierName,
+                'supplier_id' => $supplierId,
                 'no_trx' => $noTrx,
                 'id_member' => $memberId,
                 'jumlah' => $totalQty,
                 'beli' => $grandTotal,
+                'paid_amount' => $paidAmount,
+                'remaining_amount' => $remainingAmount,
+                'due_date' => $paymentMethod === 'Termin' ? $dueDate : null,
+                'payment_status' => $paymentStatus,
                 'keterangan' => $keteranganFinal,
                 'status_bayar' => $statusBayar,
+                'payment_method' => $paymentMethod,
                 'tanggal_input' => $tanggal,
                 'periode' => $periode,
             ]);
@@ -1452,30 +1511,50 @@ class TransaksiController
                 ]);
             }
 
-            if (
-                $isPo
-                && $this->columnExists($pdo, 'pembelian', 'po_no_reg')
-                && $this->columnExists($pdo, 'pembelian', 'po_status')
-                && $this->columnExists($pdo, 'pembelian', 'po_deleted_at')
-            ) {
-                $poNoReg = $this->generateNoRegPo($pdo);
-                $stmtPoFlag = $pdo->prepare("UPDATE pembelian SET po_no_reg = :po_no_reg, po_status = 'pending', po_review_note = NULL, po_review_by = NULL, po_review_at = NULL, po_deleted_at = NULL, po_deleted_by = NULL WHERE id = :id");
-                $stmtPoFlag->execute([
-                    'id' => $pembelianId,
-                    'po_no_reg' => $poNoReg,
+            if ($paidAmount > 0) {
+                $debtService->postCashOutflow([
+                    'tanggal' => $tanggal,
+                    'no_ref' => $noTrx,
+                    'sumber_tipe' => 'pembelian_supplier',
+                    'sumber_id' => $pembelianId,
+                    'metode_pembayaran' => $paymentMethod,
+                    'amount' => $paidAmount,
+                    'deskripsi' => 'Pembayaran pembelian supplier ' . $noTrx . ' kepada ' . $supplierName,
+                    'created_by' => $memberId,
                 ]);
+            }
+
+            if ($remainingAmount > 0) {
+                $debtId = $debtService->createDebt([
+                    'purchase_id' => $pembelianId,
+                    'supplier_id' => $supplierId,
+                    'debt_no' => 'UTANG-' . $noTrx,
+                    'debt_date' => $tanggal,
+                    'total_amount' => $grandTotal,
+                    'paid_amount' => $paidAmount,
+                    'due_date' => $paymentMethod === 'Termin' ? $dueDate : null,
+                    'status' => $paymentStatus,
+                    'notes' => $keteranganFinal,
+                ]);
+                $pdo->prepare('UPDATE pembelian SET payment_status = :payment_status, remaining_amount = :remaining_amount, paid_amount = :paid_amount, status_bayar = :status_bayar WHERE id = :id')->execute([
+                    'payment_status' => $paymentStatus,
+                    'remaining_amount' => $remainingAmount,
+                    'paid_amount' => $paidAmount,
+                    'status_bayar' => $statusBayar,
+                    'id' => $pembelianId,
+                ]);
+                if ($debtId > 0) {
+                    $keteranganFinal .= ' | Hutang # ' . $debtId;
+                }
             }
 
             $pdo->prepare('DELETE FROM keranjang_beli WHERE id_member = :id_member')->execute(['id_member' => $memberId]);
             $pdo->commit();
 
-            if ($isPo) {
-                $saldoFmt = 'Rp ' . number_format($saldoKas, 0, ',', '.');
-                $totalFmt = 'Rp ' . number_format($grandTotal, 0, ',', '.');
+            if ($paymentStatus !== 'paid') {
                 toast_add(
-                    'Transaksi dibuat sebagai PO (' . $noTrx . '). '
-                        . 'Saldo kas ' . $saldoFmt . ' tidak mencukupi kebutuhan ' . $totalFmt . '. '
-                        . 'Stok belum ditambah - tunggu approval PO.',
+                    'Pembelian berhasil disimpan dengan status ' . strtoupper($paymentStatus) . '. '
+                        . 'Sisa hutang supplier: Rp ' . number_format($remainingAmount, 0, ',', '.') . '.',
                     'warning'
                 );
             } else {
@@ -1607,7 +1686,7 @@ class TransaksiController
             $hasPoStatus = $this->columnExists($pdo, 'pembelian', 'po_status');
             $hasPoDeletedAt = $this->columnExists($pdo, 'pembelian', 'po_deleted_at');
 
-            $where = ['p.status_bayar = \'Lunas\'', 'p.tanggal_input >= :month_start', 'p.tanggal_input <= :month_end'];
+            $where = ['p.tanggal_input >= :month_start', 'p.tanggal_input <= :month_end'];
             if ($hasPoDeletedAt) {
                 $where[] = 'p.po_deleted_at IS NULL';
             }
@@ -1615,7 +1694,7 @@ class TransaksiController
                 $where[] = '(COALESCE(p.po_status, \'\') = \'\' OR p.po_status = \'diterima\')';
             }
 
-            $sql = 'SELECT p.id, p.no_trx, p.nm_supplier, p.beli, p.jumlah, p.status_bayar, p.keterangan, p.tanggal_input, p.created_at,
+            $sql = 'SELECT p.id, p.no_trx, p.nm_supplier, p.beli, p.jumlah, p.status_bayar, p.payment_status, p.paid_amount, p.remaining_amount, p.due_date, p.keterangan, p.tanggal_input, p.created_at,
                         COALESCE(u.name, u.user, \'Kasir\') AS kasir'
                 . ($hasPoStatus ? ', p.po_status' : ', \'\' AS po_status')
                 . ' FROM pembelian p
@@ -1652,9 +1731,13 @@ class TransaksiController
                     'nm_supplier' => (string) ($row['nm_supplier'] ?? 'Supplier Umum'),
                     'kasir' => (string) ($row['kasir'] ?? 'Kasir'),
                     'status_bayar' => (string) ($row['status_bayar'] ?? ''),
+                    'payment_status' => (string) ($row['payment_status'] ?? ''),
                     'po_status' => (string) ($row['po_status'] ?? ''),
                     'jumlah' => max(0, (int) ($row['jumlah'] ?? 0)),
                     'total' => max(0, (int) ($row['beli'] ?? 0)),
+                    'paid_amount' => max(0, (int) ($row['paid_amount'] ?? 0)),
+                    'remaining_amount' => max(0, (int) ($row['remaining_amount'] ?? 0)),
+                    'due_date' => (string) ($row['due_date'] ?? ''),
                     'keterangan' => (string) ($row['keterangan'] ?? ''),
                 ];
                 $totalNominal += max(0, (int) ($row['beli'] ?? 0));
@@ -1677,6 +1760,256 @@ class TransaksiController
                 'error' => 'Gagal memuat histori pembelian.',
             ], 500);
         }
+    }
+
+    public function purchaseDebtDatatable(Request $request): Response
+    {
+        $guard = $this->guardPembelian();
+        if ($guard !== null) {
+            return Response::json([
+                'draw' => max(0, (int) ($request->all()['draw'] ?? 0)),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => 'Akses ditolak.',
+            ], 403);
+        }
+
+        try {
+            $pdo = Database::connection();
+            $params = $request->all();
+            $draw = max(0, (int) ($params['draw'] ?? 0));
+            $start = max(0, (int) ($params['start'] ?? 0));
+            $length = (int) ($params['length'] ?? 10);
+            if ($length < 1) {
+                $length = 10;
+            }
+            if ($length > 100) {
+                $length = 100;
+            }
+            $search = trim((string) (($params['search']['value'] ?? '') ?: ''));
+
+            $where = ' WHERE sd.remaining_amount > 0';
+            $bindings = [];
+            if ($search !== '') {
+                $where .= ' AND (sd.debt_no LIKE :search OR s.nama_supplier LIKE :search OR p.no_trx LIKE :search OR sd.status LIKE :search)';
+                $bindings['search'] = '%' . $search . '%';
+            }
+
+            $baseFrom = ' FROM supplier_debts sd LEFT JOIN supplier s ON s.id = sd.supplier_id LEFT JOIN pembelian p ON p.id = sd.purchase_id';
+            $stmtTotal = $pdo->query('SELECT COUNT(*) FROM supplier_debts WHERE remaining_amount > 0');
+            $recordsTotal = (int) $stmtTotal->fetchColumn();
+            if ($search === '') {
+                $recordsFiltered = $recordsTotal;
+            } else {
+                $stmtCount = $pdo->prepare('SELECT COUNT(*)' . $baseFrom . $where);
+                foreach ($bindings as $key => $value) {
+                    $stmtCount->bindValue(':' . $key, $value);
+                }
+                $stmtCount->execute();
+                $recordsFiltered = (int) $stmtCount->fetchColumn();
+            }
+
+            $sql = 'SELECT sd.id, sd.debt_no, sd.debt_date, sd.total_amount, sd.paid_amount, sd.remaining_amount, sd.due_date, sd.status, sd.notes, sd.purchase_id, sd.supplier_id, s.nama_supplier, p.no_trx, p.payment_status, p.payment_method'
+                . $baseFrom . $where
+                . ' ORDER BY sd.due_date IS NULL, sd.due_date ASC, sd.id DESC LIMIT :limit OFFSET :offset';
+            $stmt = $pdo->prepare($sql);
+            foreach ($bindings as $key => $value) {
+                $stmt->bindValue(':' . $key, $value);
+            }
+            $stmt->bindValue(':limit', $length, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $start, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (!is_array($rows)) {
+                $rows = [];
+            }
+
+            return Response::json([
+                'draw' => $draw,
+                'recordsTotal' => $recordsTotal,
+                'recordsFiltered' => $recordsFiltered,
+                'data' => $rows,
+            ]);
+        } catch (Throwable $e) {
+            return Response::json([
+                'draw' => max(0, (int) ($request->all()['draw'] ?? 0)),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function purchaseDebtDetail(Request $request): Response
+    {
+        $guard = $this->guardPembelian();
+        if ($guard !== null) {
+            return Response::json(['error' => 'Akses ditolak.'], 403);
+        }
+
+        $debtId = max(0, (int) $request->input('debt_id', '0'));
+        if ($debtId <= 0) {
+            return Response::json(['error' => 'Data hutang tidak valid.'], 422);
+        }
+
+        try {
+            $pdo = Database::connection();
+            $stmt = $pdo->prepare(
+                'SELECT sd.id, sd.debt_no, sd.debt_date, sd.total_amount, sd.paid_amount, sd.remaining_amount, sd.due_date, sd.status, sd.notes,
+                        sd.purchase_id, sd.supplier_id, s.nama_supplier, s.telepon_supplier, s.alamat_supplier,
+                        p.no_trx, p.tanggal_input, p.payment_status, p.payment_method, p.keterangan
+                 FROM supplier_debts sd
+                 LEFT JOIN supplier s ON s.id = sd.supplier_id
+                 LEFT JOIN pembelian p ON p.id = sd.purchase_id
+                 WHERE sd.id = :id
+                 LIMIT 1'
+            );
+            $stmt->execute(['id' => $debtId]);
+            $debt = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($debt)) {
+                return Response::json(['error' => 'Data hutang tidak ditemukan.'], 404);
+            }
+
+            $stmtPay = $pdo->prepare(
+                'SELECT sp.id, sp.payment_no, sp.payment_date, sp.payment_method, sp.amount, sp.reference_no, sp.notes, sp.created_at,
+                        COALESCE(u.name, u.user, \'Kasir\') AS created_by_name
+                 FROM supplier_debt_payments sp
+                 LEFT JOIN users u ON u.id = sp.created_by
+                 WHERE sp.supplier_debt_id = :supplier_debt_id
+                 ORDER BY sp.payment_date DESC, sp.id DESC'
+            );
+            $stmtPay->execute(['supplier_debt_id' => $debtId]);
+            $payments = $stmtPay->fetchAll(PDO::FETCH_ASSOC);
+            if (!is_array($payments)) {
+                $payments = [];
+            }
+
+            return Response::json([
+                'success' => true,
+                'data' => $debt,
+                'payments' => $payments,
+            ]);
+        } catch (Throwable $e) {
+            return Response::json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function paySupplierDebt(Request $request): Response
+    {
+        $guard = $this->guardPembelian();
+        if ($guard !== null) {
+            return $guard;
+        }
+
+        $memberId = (int) ($_SESSION['auth']['id'] ?? 0);
+        $debtId = max(0, (int) $request->input('supplier_debt_id', '0'));
+        $amount = max(0, (int) $request->input('amount', '0'));
+        $notes = trim((string) $request->input('notes', ''));
+        if ($debtId <= 0 || $amount <= 0) {
+            toast_add('Data pembayaran hutang tidak valid.', 'error');
+            return Response::redirect('/transaksi/pembelian');
+        }
+
+        try {
+            $pdo = Database::connection();
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare(
+                'SELECT sd.id, sd.purchase_id, sd.supplier_id, sd.debt_no, sd.remaining_amount, sd.status, sd.total_amount,
+                        p.no_trx, p.tanggal_input, p.payment_status, p.payment_method, p.due_date, p.nm_supplier
+                 FROM supplier_debts sd
+                 LEFT JOIN pembelian p ON p.id = sd.purchase_id
+                 WHERE sd.id = :id
+                 LIMIT 1 FOR UPDATE'
+            );
+            $stmt->execute(['id' => $debtId]);
+            $debt = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($debt)) {
+                throw new RuntimeException('Hutang supplier tidak ditemukan.');
+            }
+
+            $remaining = max(0, (int) ($debt['remaining_amount'] ?? 0));
+            if ($remaining <= 0 || strtolower((string) ($debt['status'] ?? '')) === 'paid') {
+                throw new RuntimeException('Hutang supplier sudah lunas.');
+            }
+            if ($amount > $remaining) {
+                throw new RuntimeException('Nominal bayar tidak boleh melebihi sisa hutang.');
+            }
+
+            $saldoKas = 0.0;
+            try {
+                $saldoKas = (new KeuanganService($pdo))->saldoKasSaatIni();
+            } catch (Throwable) {
+                $saldoKas = 0.0;
+            }
+            if ($saldoKas < $amount) {
+                throw new RuntimeException('Saldo kas tidak mencukupi untuk pembayaran hutang.');
+            }
+
+            $debtService = new SupplierDebtService($pdo);
+            $paymentDate = date('Y-m-d');
+            $debtService->recordDebtPayment([
+                'supplier_debt_id' => $debtId,
+                'purchase_id' => (int) ($debt['purchase_id'] ?? 0),
+                'supplier_id' => (int) ($debt['supplier_id'] ?? 0),
+                'payment_no' => 'BYR-' . (string) ($debt['debt_no'] ?? 'DEBT') . '-' . date('YmdHis'),
+                'payment_date' => $paymentDate,
+                'payment_method' => 'Cash',
+                'kas_akun_id' => $debtService->resolveKasAkunId(),
+                'amount' => $amount,
+                'reference_no' => (string) ($debt['no_trx'] ?? ''),
+                'notes' => $notes !== '' ? $notes : 'Pembayaran hutang supplier',
+                'created_by' => $memberId,
+            ]);
+
+            $debtService->postCashOutflow([
+                'tanggal' => $paymentDate,
+                'no_ref' => 'BAYAR-' . (string) ($debt['debt_no'] ?? $debtId),
+                'sumber_tipe' => 'pembayaran_hutang_supplier',
+                'sumber_id' => $debtId,
+                'metode_pembayaran' => 'Cash',
+                'amount' => $amount,
+                'deskripsi' => 'Pembayaran hutang supplier ' . (string) ($debt['nama_supplier'] ?? ''),
+                'created_by' => $memberId,
+            ]);
+
+            $stmtSum = $pdo->prepare('SELECT COALESCE(SUM(amount), 0) FROM supplier_debt_payments WHERE supplier_debt_id = :id');
+            $stmtSum->execute(['id' => $debtId]);
+            $paidTotal = min(max(0, (int) ($debt['total_amount'] ?? 0)), (int) $stmtSum->fetchColumn());
+            $newRemaining = max(0, (int) ($debt['total_amount'] ?? 0) - $paidTotal);
+            $newStatus = $newRemaining <= 0 ? 'paid' : ($paidTotal > 0 ? 'partial' : 'unpaid');
+
+            $stmtUpdate = $pdo->prepare('UPDATE supplier_debts SET paid_amount = :paid_amount, remaining_amount = :remaining_amount, status = :status, updated_at = NOW() WHERE id = :id');
+            $stmtUpdate->execute([
+                'paid_amount' => $paidTotal,
+                'remaining_amount' => $newRemaining,
+                'status' => $newStatus,
+                'id' => $debtId,
+            ]);
+
+            $pdo->prepare('UPDATE pembelian SET paid_amount = :paid_amount, remaining_amount = :remaining_amount, payment_status = :payment_status, status_bayar = :status_bayar WHERE id = :id')->execute([
+                'paid_amount' => $paidTotal,
+                'remaining_amount' => $newRemaining,
+                'payment_status' => $newStatus,
+                'status_bayar' => $newRemaining <= 0 ? 'Lunas' : 'Hutang',
+                'id' => (int) ($debt['purchase_id'] ?? 0),
+            ]);
+            $pdo->prepare('UPDATE pembelian_detail SET status_bayar = :status_bayar WHERE no_trx = :no_trx')->execute([
+                'status_bayar' => $newRemaining <= 0 ? 'Lunas' : 'Hutang',
+                'no_trx' => (string) ($debt['no_trx'] ?? ''),
+            ]);
+
+            $pdo->commit();
+            toast_add('Pembayaran hutang supplier berhasil disimpan.', 'success');
+        } catch (Throwable $e) {
+            if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            toast_add($e->getMessage() !== '' ? $e->getMessage() : 'Gagal membayar hutang supplier.', 'error');
+        }
+
+        return Response::redirect('/transaksi/pembelian');
     }
 
     /**

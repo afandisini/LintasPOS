@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\Database;
+use App\Services\RateLimitDetector;
+use App\Services\SecurityLogger;
 use PDO;
 use System\Http\Request;
 use System\Http\Response;
@@ -65,7 +67,7 @@ class LaporanController
         $search = trim((string) (($params['search']['value'] ?? '') ?: ''));
 
         $tipe = strtolower(trim((string) ($params['tipe'] ?? 'penjualan')));
-        if (!in_array($tipe, ['penjualan', 'pembelian'], true)) {
+        if (!in_array($tipe, ['penjualan', 'pembelian', 'po', 'hutang'], true)) {
             $tipe = 'penjualan';
         }
 
@@ -84,7 +86,13 @@ class LaporanController
             if ($tipe === 'penjualan') {
                 return $this->datatablePenjualan($pdo, $draw, $start, $length, $search, $filterTanggalDari, $filterTanggalSampai, $filterPelanggan, $filterMetode, $filterKategori, $filterProduk, $canViewModal);
             }
-            return $this->datatablePembelian($pdo, $draw, $start, $length, $search, $filterTanggalDari, $filterTanggalSampai, $filterSupplier, $filterMetode, $filterKategori, $filterProduk, $canViewModal);
+            if ($tipe === 'pembelian') {
+                return $this->datatablePembelian($pdo, $draw, $start, $length, $search, $filterTanggalDari, $filterTanggalSampai, $filterSupplier, $filterMetode, $filterKategori, $filterProduk, $canViewModal);
+            }
+            if ($tipe === 'po') {
+                return $this->datatablePo($pdo, $draw, $start, $length, $search, $filterTanggalDari, $filterTanggalSampai, $filterSupplier, $filterProduk);
+            }
+            return $this->datatableHutang($pdo, $draw, $start, $length, $search, $filterTanggalDari, $filterTanggalSampai, $filterSupplier);
         } catch (Throwable $e) {
             return Response::json(['draw' => $draw, 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => $e->getMessage()], 500);
         }
@@ -119,7 +127,11 @@ class LaporanController
                 $modalPenjualan = $canViewModal ? (int) ($penjualan['total_modal'] ?? 0) : 0;
 
                 // Pembelian
-                $stmtPembelian = $pdo->prepare('SELECT COALESCE(SUM(beli), 0) AS total_pembelian FROM pembelian WHERE periode = :periode');
+                $stmtPembelian = $pdo->prepare("SELECT COALESCE(SUM(beli), 0) AS total_pembelian
+                    FROM pembelian
+                    WHERE periode = :periode
+                      AND (COALESCE(po_status, '') = '' OR po_status = 'diterima')
+                      AND po_deleted_at IS NULL");
                 $stmtPembelian->execute(['periode' => $periode]);
                 $pembelian = $stmtPembelian->fetch(PDO::FETCH_ASSOC);
                 $totalPembelian = (int) ($pembelian['total_pembelian'] ?? 0);
@@ -225,15 +237,36 @@ class LaporanController
         $params = $request->all();
         $tab = trim((string) ($params['tab'] ?? 'transaksi'));
         $autoPrint = (string) ($params['print'] ?? '') === '1';
+        $isDownload = (string) ($params['download'] ?? '') === '1';
         $canViewModal = $this->canViewModal($auth);
 
+        // Export abuse detection
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+        $exportCheck = RateLimitDetector::hit('export', $ip, threshold: 20, windowSeconds: 60, blockSeconds: 120);
+        if ($exportCheck['blocked']) {
+            SecurityLogger::logSecurityEvent('USER_EXPORT_ABUSE', 'sensitive', 'medium',
+                SecurityLogger::RISK_MEDIUM, 'LaporanController',
+                ['ip' => $ip, 'count' => $exportCheck['count']], 'throttled');
+            toast_add('Terlalu banyak permintaan export. Coba lagi nanti.', 'error');
+            return Response::redirect('/laporan');
+        }
+        SecurityLogger::logAudit('laporan', 'EXPORT', 'laporan', $tab, null,
+            ['tab' => $tab, 'download' => $isDownload]);
+
         if ($tab === 'rugi-laba') {
-            return $this->exportRugiLabaPdf($request, $auth, $canViewModal, $autoPrint);
+            $response = $this->exportRugiLabaPdf($request, $auth, $canViewModal, $autoPrint);
+        } elseif ($tab === 'keuangan') {
+            $response = $this->exportKeuanganPdf($request, $auth, $canViewModal, $autoPrint);
+        } else {
+            $response = $this->exportTransaksiPdf($request, $auth, $canViewModal, $autoPrint);
         }
-        if ($tab === 'keuangan') {
-            return $this->exportKeuanganPdf($request, $auth, $canViewModal, $autoPrint);
+
+        if ($isDownload) {
+            $filename = 'laporan-' . $tab . '-' . date('Ymd-His') . '.html';
+            return $response->withHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
         }
-        return $this->exportTransaksiPdf($request, $auth, $canViewModal, $autoPrint);
+
+        return $response;
     }
 
     // ── private helpers ──────────────────────────────────────────────────────
@@ -299,7 +332,7 @@ class LaporanController
             $bindings['nama_produk'] = '%' . $produk . '%';
         }
         if ($kategori > 0) {
-            $where .= ' AND EXISTS (SELECT 1 FROM penjualan_detail pd3 INNER JOIN barang b3 ON b3.id = pd3.id_barang WHERE pd3.no_trx = p.no_trx AND b3.id_kategori = :id_kategori)';
+            $where .= ' AND EXISTS (SELECT 1 FROM penjualan_detail pd3 INNER JOIN barang b3 ON b3.id = pd3.id_barang WHERE pd3.no_trx = p.no_trx AND b3.kategori_id = :id_kategori)';
             $bindings['id_kategori'] = $kategori;
         }
         if ($search !== '') {
@@ -341,25 +374,27 @@ class LaporanController
         $bindings = [];
 
         $where .= $this->buildDateWhere('p.tanggal_input', $dari, $sampai);
+        $where .= " AND (COALESCE(p.po_status, '') = '' OR p.po_status = 'diterima')";
+        $where .= ' AND p.po_deleted_at IS NULL';
 
         if ($supplier !== '') {
             $where .= ' AND p.nm_supplier LIKE :nm_supplier';
             $bindings['nm_supplier'] = '%' . $supplier . '%';
         }
         if ($metode !== '') {
-            $where .= ' AND p.status_bayar = :status_bayar';
-            $bindings['status_bayar'] = $metode;
+            $where .= ' AND p.payment_method = :payment_method';
+            $bindings['payment_method'] = $metode;
         }
         if ($produk !== '') {
             $where .= ' AND EXISTS (SELECT 1 FROM pembelian_detail pd2 WHERE pd2.no_trx = p.no_trx AND pd2.nama_barang LIKE :nama_produk)';
             $bindings['nama_produk'] = '%' . $produk . '%';
         }
         if ($kategori > 0) {
-            $where .= ' AND EXISTS (SELECT 1 FROM pembelian_detail pd3 INNER JOIN barang b3 ON b3.id = pd3.id_barang WHERE pd3.no_trx = p.no_trx AND b3.id_kategori = :id_kategori)';
+            $where .= ' AND EXISTS (SELECT 1 FROM pembelian_detail pd3 INNER JOIN barang b3 ON b3.id = pd3.id_barang WHERE pd3.no_trx = p.no_trx AND b3.kategori_id = :id_kategori)';
             $bindings['id_kategori'] = $kategori;
         }
         if ($search !== '') {
-            $where .= ' AND (p.no_trx LIKE :search OR p.nm_supplier LIKE :search OR p.status_bayar LIKE :search)';
+            $where .= ' AND (p.no_trx LIKE :search OR p.nm_supplier LIKE :search OR p.status_bayar LIKE :search OR p.payment_method LIKE :search OR p.payment_status LIKE :search)';
             $bindings['search'] = '%' . $search . '%';
         }
 
@@ -373,9 +408,101 @@ class LaporanController
         $stmtCount->execute();
         $total = (int) $stmtCount->fetchColumn();
 
-        $sql = 'SELECT p.id, p.no_trx, p.tanggal_input, p.nm_supplier, p.jumlah AS total_qty, p.beli AS total, p.status_bayar, p.keterangan' . $modalCol
+        $sql = 'SELECT p.id, p.no_trx, p.tanggal_input, p.nm_supplier, p.jumlah AS total_qty, p.beli AS total, p.status_bayar, p.payment_method, p.payment_status, p.paid_amount, p.remaining_amount, p.due_date, p.keterangan' . $modalCol
             . $baseFrom . $where
             . ' ORDER BY p.id DESC LIMIT :limit OFFSET :offset';
+        $stmt = $pdo->prepare($sql);
+        foreach ($bindings as $k => $v) {
+            $stmt->bindValue(':' . $k, $v);
+        }
+        $stmt->bindValue(':limit', $length, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $start, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return Response::json(['draw' => $draw, 'recordsTotal' => $total, 'recordsFiltered' => $total, 'data' => is_array($rows) ? $rows : []]);
+    }
+
+    private function datatablePo(
+        \PDO $pdo, int $draw, int $start, int $length, string $search,
+        string $dari, string $sampai, string $supplier, string $produk
+    ): Response {
+        $where = " WHERE COALESCE(p.po_status, '') <> '' AND p.po_deleted_at IS NULL";
+        $bindings = [];
+
+        $where .= $this->buildDateWhere('p.tanggal_input', $dari, $sampai);
+        if ($supplier !== '') {
+            $where .= ' AND p.nm_supplier LIKE :nm_supplier';
+            $bindings['nm_supplier'] = '%' . $supplier . '%';
+        }
+        if ($produk !== '') {
+            $where .= ' AND EXISTS (SELECT 1 FROM pembelian_detail pd2 WHERE pd2.no_trx = p.no_trx AND pd2.nama_barang LIKE :nama_produk)';
+            $bindings['nama_produk'] = '%' . $produk . '%';
+        }
+        if ($search !== '') {
+            $where .= ' AND (p.po_no_reg LIKE :search OR p.no_trx LIKE :search OR p.nm_supplier LIKE :search OR p.po_status LIKE :search OR p.keterangan LIKE :search)';
+            $bindings['search'] = '%' . $search . '%';
+        }
+
+        $baseFrom = ' FROM pembelian p';
+        $stmtCount = $pdo->prepare('SELECT COUNT(*)' . $baseFrom . $where);
+        foreach ($bindings as $k => $v) {
+            $stmtCount->bindValue(':' . $k, $v);
+        }
+        $stmtCount->execute();
+        $total = (int) $stmtCount->fetchColumn();
+
+        $sql = 'SELECT p.id, p.po_no_reg, p.no_trx, p.tanggal_input, p.nm_supplier, p.jumlah AS total_qty, p.beli AS total, p.po_status, p.status_bayar, p.payment_status, p.payment_method, p.paid_amount, p.remaining_amount, p.due_date, p.po_review_note, p.keterangan'
+            . $baseFrom . $where
+            . ' ORDER BY p.id DESC LIMIT :limit OFFSET :offset';
+        $stmt = $pdo->prepare($sql);
+        foreach ($bindings as $k => $v) {
+            $stmt->bindValue(':' . $k, $v);
+        }
+        $stmt->bindValue(':limit', $length, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $start, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return Response::json(['draw' => $draw, 'recordsTotal' => $total, 'recordsFiltered' => $total, 'data' => is_array($rows) ? $rows : []]);
+    }
+
+    private function datatableHutang(
+        \PDO $pdo, int $draw, int $start, int $length, string $search,
+        string $dari, string $sampai, string $supplier
+    ): Response {
+        $where = ' WHERE sd.remaining_amount > 0';
+        $bindings = [];
+
+        if ($dari !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dari)) {
+            $where .= ' AND sd.debt_date >= :tanggal_dari';
+            $bindings['tanggal_dari'] = $dari;
+        }
+        if ($sampai !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $sampai)) {
+            $where .= ' AND sd.debt_date <= :tanggal_sampai';
+            $bindings['tanggal_sampai'] = $sampai;
+        }
+        if ($supplier !== '') {
+            $where .= ' AND s.nama_supplier LIKE :nama_supplier';
+            $bindings['nama_supplier'] = '%' . $supplier . '%';
+        }
+        if ($search !== '') {
+            $where .= ' AND (sd.debt_no LIKE :search OR s.nama_supplier LIKE :search OR p.no_trx LIKE :search OR sd.status LIKE :search OR p.payment_method LIKE :search)';
+            $bindings['search'] = '%' . $search . '%';
+        }
+
+        $baseFrom = ' FROM supplier_debts sd LEFT JOIN supplier s ON s.id = sd.supplier_id LEFT JOIN pembelian p ON p.id = sd.purchase_id';
+        $stmtCount = $pdo->prepare('SELECT COUNT(*)' . $baseFrom . $where);
+        foreach ($bindings as $k => $v) {
+            $stmtCount->bindValue(':' . $k, $v);
+        }
+        $stmtCount->execute();
+        $total = (int) $stmtCount->fetchColumn();
+
+        $sql = 'SELECT sd.id, sd.debt_no, sd.debt_date, sd.total_amount, sd.paid_amount, sd.remaining_amount, sd.due_date, sd.status, sd.notes,
+                sd.purchase_id, sd.supplier_id, s.nama_supplier, p.no_trx, p.payment_status, p.payment_method'
+            . $baseFrom . $where
+            . ' ORDER BY sd.due_date IS NULL, sd.due_date ASC, sd.id DESC LIMIT :limit OFFSET :offset';
         $stmt = $pdo->prepare($sql);
         foreach ($bindings as $k => $v) {
             $stmt->bindValue(':' . $k, $v);
@@ -401,7 +528,7 @@ class LaporanController
         if ($pelanggan > 0) { $where .= ' AND p.id_pelanggan = :id_pelanggan'; $bindings['id_pelanggan'] = $pelanggan; }
         if ($metode !== '') { $where .= ' AND p.payment_method = :payment_method'; $bindings['payment_method'] = $metode; }
         if ($produk !== '') { $where .= ' AND EXISTS (SELECT 1 FROM penjualan_detail pd2 WHERE pd2.no_trx = p.no_trx AND pd2.nama_barang LIKE :nama_produk)'; $bindings['nama_produk'] = '%' . $produk . '%'; }
-        if ($kategori > 0) { $where .= ' AND EXISTS (SELECT 1 FROM penjualan_detail pd3 INNER JOIN barang b3 ON b3.id = pd3.id_barang WHERE pd3.no_trx = p.no_trx AND b3.id_kategori = :id_kategori)'; $bindings['id_kategori'] = $kategori; }
+        if ($kategori > 0) { $where .= ' AND EXISTS (SELECT 1 FROM penjualan_detail pd3 INNER JOIN barang b3 ON b3.id = pd3.id_barang WHERE pd3.no_trx = p.no_trx AND b3.kategori_id = :id_kategori)'; $bindings['id_kategori'] = $kategori; }
 
         $modalCol = $canViewModal ? ', p.beli AS total_modal' : ', 0 AS total_modal';
         $sql = 'SELECT p.no_trx, p.tanggal_input, pl.nama_pelanggan, p.jumlah AS total_qty, p.total, p.bayar, p.status_bayar, p.payment_method' . $modalCol
@@ -432,13 +559,15 @@ class LaporanController
         $where = ' WHERE 1=1';
         $bindings = [];
         $where .= $this->buildDateWhere('p.tanggal_input', $dari, $sampai);
+        $where .= " AND (COALESCE(p.po_status, '') = '' OR p.po_status = 'diterima')";
+        $where .= ' AND p.po_deleted_at IS NULL';
         if ($supplier !== '') { $where .= ' AND p.nm_supplier LIKE :nm_supplier'; $bindings['nm_supplier'] = '%' . $supplier . '%'; }
-        if ($metode !== '') { $where .= ' AND p.status_bayar = :status_bayar'; $bindings['status_bayar'] = $metode; }
+        if ($metode !== '') { $where .= ' AND p.payment_method = :payment_method'; $bindings['payment_method'] = $metode; }
         if ($produk !== '') { $where .= ' AND EXISTS (SELECT 1 FROM pembelian_detail pd2 WHERE pd2.no_trx = p.no_trx AND pd2.nama_barang LIKE :nama_produk)'; $bindings['nama_produk'] = '%' . $produk . '%'; }
-        if ($kategori > 0) { $where .= ' AND EXISTS (SELECT 1 FROM pembelian_detail pd3 INNER JOIN barang b3 ON b3.id = pd3.id_barang WHERE pd3.no_trx = p.no_trx AND b3.id_kategori = :id_kategori)'; $bindings['id_kategori'] = $kategori; }
+        if ($kategori > 0) { $where .= ' AND EXISTS (SELECT 1 FROM pembelian_detail pd3 INNER JOIN barang b3 ON b3.id = pd3.id_barang WHERE pd3.no_trx = p.no_trx AND b3.kategori_id = :id_kategori)'; $bindings['id_kategori'] = $kategori; }
 
         $modalCol = $canViewModal ? ', p.beli AS total_modal' : ', 0 AS total_modal';
-        $sql = 'SELECT p.no_trx, p.tanggal_input, p.nm_supplier, p.jumlah AS total_qty, p.beli AS total, p.status_bayar, p.keterangan' . $modalCol
+        $sql = 'SELECT p.no_trx, p.tanggal_input, p.nm_supplier, p.jumlah AS total_qty, p.beli AS total, p.status_bayar, p.payment_method, p.payment_status, p.paid_amount, p.remaining_amount, p.due_date, p.keterangan' . $modalCol
             . ' FROM pembelian p' . $where . ' ORDER BY p.tanggal_input ASC, p.id ASC';
         $stmt = $pdo->prepare($sql);
         foreach ($bindings as $k => $v) { $stmt->bindValue(':' . $k, $v); }
@@ -450,7 +579,62 @@ class LaporanController
         foreach ($rows as $r) {
             $summary['total_qty'] += (int) ($r['total_qty'] ?? 0);
             $summary['grand_total'] += (int) ($r['total'] ?? 0);
-            $summary['total_modal'] += (int) ($r['total_modal'] ?? 0);
+            $summary['total_modal'] += (int) ($r['paid_amount'] ?? 0);
+        }
+        return [$rows, $summary];
+    }
+
+    /**
+     * @return array{0: array<int,array<string,mixed>>, 1: array<string,int>}
+     */
+    private function fetchPoForExport(
+        \PDO $pdo, string $dari, string $sampai, string $supplier, string $produk
+    ): array {
+        $where = " WHERE COALESCE(p.po_status, '') <> '' AND p.po_deleted_at IS NULL";
+        $bindings = [];
+        $where .= $this->buildDateWhere('p.tanggal_input', $dari, $sampai);
+        if ($supplier !== '') { $where .= ' AND p.nm_supplier LIKE :nm_supplier'; $bindings['nm_supplier'] = '%' . $supplier . '%'; }
+        if ($produk !== '') { $where .= ' AND EXISTS (SELECT 1 FROM pembelian_detail pd2 WHERE pd2.no_trx = p.no_trx AND pd2.nama_barang LIKE :nama_produk)'; $bindings['nama_produk'] = '%' . $produk . '%'; }
+        $sql = 'SELECT p.po_no_reg, p.no_trx, p.tanggal_input, p.nm_supplier, p.jumlah AS total_qty, p.beli AS total, p.po_status, p.payment_status, p.payment_method, p.paid_amount, p.remaining_amount, p.due_date, p.po_review_note, p.keterangan
+            FROM pembelian p' . $where . ' ORDER BY p.tanggal_input ASC, p.id ASC';
+        $stmt = $pdo->prepare($sql);
+        foreach ($bindings as $k => $v) { $stmt->bindValue(':' . $k, $v); }
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!is_array($rows)) $rows = [];
+
+        $summary = ['total_transaksi' => count($rows), 'total_qty' => 0, 'grand_total' => 0, 'total_modal' => 0, 'laba' => 0];
+        foreach ($rows as $r) {
+            $summary['total_qty'] += (int) ($r['total_qty'] ?? 0);
+            $summary['grand_total'] += (int) ($r['total'] ?? 0);
+        }
+        return [$rows, $summary];
+    }
+
+    /**
+     * @return array{0: array<int,array<string,mixed>>, 1: array<string,int>}
+     */
+    private function fetchHutangForExport(\PDO $pdo, string $dari, string $sampai, string $supplier): array
+    {
+        $where = ' WHERE sd.remaining_amount > 0';
+        $bindings = [];
+        if ($dari !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dari)) { $where .= ' AND sd.debt_date >= :tanggal_dari'; $bindings['tanggal_dari'] = $dari; }
+        if ($sampai !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $sampai)) { $where .= ' AND sd.debt_date <= :tanggal_sampai'; $bindings['tanggal_sampai'] = $sampai; }
+        if ($supplier !== '') { $where .= ' AND s.nama_supplier LIKE :nama_supplier'; $bindings['nama_supplier'] = '%' . $supplier . '%'; }
+        $sql = 'SELECT sd.debt_no, sd.debt_date, s.nama_supplier, p.no_trx, sd.total_amount, sd.paid_amount, sd.remaining_amount, sd.due_date, sd.status
+            FROM supplier_debts sd
+            LEFT JOIN supplier s ON s.id = sd.supplier_id
+            LEFT JOIN pembelian p ON p.id = sd.purchase_id'
+            . $where . ' ORDER BY sd.due_date IS NULL, sd.due_date ASC, sd.id ASC';
+        $stmt = $pdo->prepare($sql);
+        foreach ($bindings as $k => $v) { $stmt->bindValue(':' . $k, $v); }
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!is_array($rows)) $rows = [];
+
+        $summary = ['total_transaksi' => count($rows), 'total_qty' => 0, 'grand_total' => 0, 'total_modal' => 0, 'laba' => 0];
+        foreach ($rows as $r) {
+            $summary['grand_total'] += (int) ($r['remaining_amount'] ?? 0);
         }
         return [$rows, $summary];
     }
@@ -459,7 +643,7 @@ class LaporanController
     {
         $params = $request->all();
         $tipe = strtolower(trim((string) ($params['tipe'] ?? 'penjualan')));
-        if (!in_array($tipe, ['penjualan', 'pembelian'], true)) $tipe = 'penjualan';
+        if (!in_array($tipe, ['penjualan', 'pembelian', 'po', 'hutang'], true)) $tipe = 'penjualan';
         $filterTanggalDari = trim((string) ($params['tanggal_dari'] ?? ''));
         $filterTanggalSampai = trim((string) ($params['tanggal_sampai'] ?? ''));
         $filterPelanggan = (int) ($params['id_pelanggan'] ?? 0);
@@ -473,8 +657,12 @@ class LaporanController
             $pdo = Database::connection();
             if ($tipe === 'penjualan') {
                 [$rows, $summary] = $this->fetchPenjualanForExport($pdo, $filterTanggalDari, $filterTanggalSampai, $filterPelanggan, $filterMetode, $filterKategori, $filterProduk, $canViewModal);
-            } else {
+            } elseif ($tipe === 'pembelian') {
                 [$rows, $summary] = $this->fetchPembelianForExport($pdo, $filterTanggalDari, $filterTanggalSampai, $filterSupplier, $filterMetode, $filterKategori, $filterProduk, $canViewModal);
+            } elseif ($tipe === 'po') {
+                [$rows, $summary] = $this->fetchPoForExport($pdo, $filterTanggalDari, $filterTanggalSampai, $filterSupplier, $filterProduk);
+            } else {
+                [$rows, $summary] = $this->fetchHutangForExport($pdo, $filterTanggalDari, $filterTanggalSampai, $filterSupplier);
             }
         } catch (Throwable) {}
         $html = app()->view()->render('laporan/export_pdf', [
@@ -508,7 +696,11 @@ class LaporanController
                 $penjualan = $stmtPenjualan->fetch(PDO::FETCH_ASSOC);
                 $totalPenjualan = (int) ($penjualan['total_penjualan'] ?? 0);
                 $modalPenjualan = $canViewModal ? (int) ($penjualan['total_modal'] ?? 0) : 0;
-                $stmtPembelian = $pdo->prepare('SELECT COALESCE(SUM(beli), 0) AS total_pembelian FROM pembelian WHERE periode = :periode');
+                $stmtPembelian = $pdo->prepare("SELECT COALESCE(SUM(beli), 0) AS total_pembelian
+                    FROM pembelian
+                    WHERE periode = :periode
+                      AND (COALESCE(po_status, '') = '' OR po_status = 'diterima')
+                      AND po_deleted_at IS NULL");
                 $stmtPembelian->execute(['periode' => $periode]);
                 $pembelian = $stmtPembelian->fetch(PDO::FETCH_ASSOC);
                 $totalPembelian = (int) ($pembelian['total_pembelian'] ?? 0);

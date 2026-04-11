@@ -930,12 +930,20 @@ body {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-light);
 }
-.search-box .bi {
+.search-box > .bi {
   position: absolute;
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
+}
+
+.gs-dropdown .bi {
+  position: static;
+  left: auto;
+  top: auto;
+  transform: none;
+  color: inherit;
 }
 
 .n-btn {
@@ -3499,3 +3507,112 @@ select.fi {
     padding-top: 0;
   }
 }
+
+/* ── Global Search Dropdown ───────────────────────────────────── */
+.search-box {
+  position: relative;
+}
+
+.gs-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 360px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: 1055;
+  overflow: hidden;
+}
+
+.gs-dropdown.gs-open {
+  display: block;
+}
+
+.gs-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 8px 12px 4px;
+}
+
+.gs-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: background var(--transition);
+}
+
+.gs-item:hover,
+.gs-item.gs-active {
+  background: var(--bg-tertiary);
+}
+
+.gs-item-icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 9px;
+  background: var(--accent-light);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.gs-item-icon.gs-icon-jasa     { background: var(--info-light);    color: var(--info); }
+.gs-item-icon.gs-icon-pelanggan{ background: var(--success-light);  color: var(--success); }
+.gs-item-icon.gs-icon-supplier { background: var(--danger-light);   color: var(--danger); }
+
+.gs-item-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gs-item-label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.gs-item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.gs-empty {
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.gs-loading {
+  padding: 14px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 575.98px) {
+  .gs-dropdown {
+    width: 300px;
+  }
+}
+/* ── End Global Search ────────────────────────────────────────── */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\Database;
+use App\Services\SecurityLogger;
 use System\Http\Request;
 use System\Http\Response;
 use RuntimeException;
@@ -239,6 +240,8 @@ class BarangController
             $valueSql = ':' . implode(',:', $insertColumns);
             $stmt = $pdo->prepare('INSERT INTO `barang` (' . $columnSql . ') VALUES (' . $valueSql . ')');
             $stmt->execute($params);
+            $newId = (int) $pdo->lastInsertId();
+            SecurityLogger::logAudit('barang', 'CREATE', 'barang', (string) $newId, null, $params);
             toast_add('Data Barang berhasil ditambahkan.', 'success');
         } catch (Throwable $e) {
             if (stripos($e->getMessage(), 'upload') !== false || stripos($e->getMessage(), 'gambar') !== false) {
@@ -337,6 +340,13 @@ class BarangController
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
 
+            // Fetch before for diff — use params as after snapshot (excludes id)
+            $before = $pdo->prepare('SELECT * FROM `barang` WHERE id = :id');
+            $before->execute(['id' => $recordId]);
+            $beforeRow = $before->fetch(\PDO::FETCH_ASSOC);
+            SecurityLogger::logAudit('barang', 'UPDATE', 'barang', (string) $recordId,
+                is_array($beforeRow) ? $beforeRow : null, $params);
+
             foreach (array_values(array_unique($oldFileIdsToDelete)) as $oldFileId) {
                 $this->softDeleteFilemanagerById($pdo, (int) $oldFileId);
             }
@@ -365,8 +375,13 @@ class BarangController
 
         try {
             $pdo = Database::connection();
+            $beforeStmt = $pdo->prepare('SELECT * FROM `barang` WHERE id = :id');
+            $beforeStmt->execute(['id' => $recordId]);
+            $beforeRow = $beforeStmt->fetch(\PDO::FETCH_ASSOC);
             $stmt = $pdo->prepare('DELETE FROM `barang` WHERE id = :id');
             $stmt->execute(['id' => $recordId]);
+            SecurityLogger::logAudit('barang', 'DELETE', 'barang', (string) $recordId,
+                is_array($beforeRow) ? $beforeRow : null, null);
             toast_add('Data Barang berhasil dihapus.', 'success');
         } catch (Throwable) {
             toast_add('Gagal menghapus data Barang.', 'error');

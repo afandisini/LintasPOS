@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\Database;
+use App\Services\SecurityLogger;
 use System\Http\Request;
 use System\Http\Response;
 use Throwable;
@@ -174,6 +175,20 @@ class FileManagerController
                 continue;
             }
 
+            // Deteksi double extension (misal shell.php.jpg)
+            $baseName = pathinfo($originalName, PATHINFO_FILENAME);
+            $innerExt = strtolower((string) pathinfo($baseName, PATHINFO_EXTENSION));
+            if ($innerExt !== '' && in_array($innerExt, $blockedExtensions, true)) {
+                SecurityLogger::logSecurityEvent(
+                    'USER_DOUBLE_EXTENSION_UPLOAD', 'upload', 'critical',
+                    SecurityLogger::RISK_CRITICAL, 'FileManagerController',
+                    ['filename' => $failedLabel, 'inner_ext' => $innerExt, 'outer_ext' => $extension],
+                    'blocked'
+                );
+                $failedNames[] = $failedLabel;
+                continue;
+            }
+
             $safeOriginal = $this->sanitizeFileName($originalName);
 
             try {
@@ -193,6 +208,12 @@ class FileManagerController
             $finfo = new \finfo(FILEINFO_MIME_TYPE);
             $detectedMime = (string) $finfo->file($targetPath);
             if (!in_array($detectedMime, $allowedMimeTypes, true)) {
+                SecurityLogger::logSecurityEvent(
+                    'USER_MIME_EXTENSION_MISMATCH', 'upload', 'high',
+                    SecurityLogger::RISK_HIGH, 'FileManagerController',
+                    ['filename' => $failedLabel, 'extension' => $extension, 'detected_mime' => $detectedMime],
+                    'blocked'
+                );
                 @unlink($targetPath);
                 $failedNames[] = $failedLabel;
                 continue;
@@ -225,6 +246,8 @@ class FileManagerController
 
         if ($successCount > 0) {
             toast_add($successCount . ' file berhasil diupload.', 'success');
+            SecurityLogger::logAudit('filemanager', 'UPLOAD', 'filemanager', $module . '/' . $refId,
+                null, ['module' => $module, 'ref_id' => $refId, 'count' => $successCount, 'visibility' => $visibility]);
         }
 
         if ($failedNames !== []) {
@@ -274,6 +297,8 @@ class FileManagerController
 
             $this->deleteFileRows($pdo, [$row]);
 
+            SecurityLogger::logAudit('filemanager', 'DELETE', 'filemanager', (string) $recordId,
+                $row, null);
             toast_add('File berhasil dihapus.', 'success');
             $module = $this->normalizeModule((string) $request->input('module', (string) ($row['module'] ?? '')));
             $ref = $this->normalizeRefId((string) $request->input('ref', (string) ($row['ref_id'] ?? '')));
@@ -330,6 +355,10 @@ class FileManagerController
             }
 
             $this->deleteFileRows($pdo, $rows);
+            SecurityLogger::logAudit('filemanager', 'BULK_DELETE', 'filemanager',
+                implode(',', array_column($rows, 'id')),
+                null, ['count' => count($rows)],
+                count($rows) >= 5, count($rows) >= 5 ? SecurityLogger::RISK_LOW : 0);
             toast_add(count($rows) . ' file berhasil dihapus.', 'success');
             return $this->redirectWithFilters($module, $ref, $page);
         } catch (Throwable) {

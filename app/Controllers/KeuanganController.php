@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Services\Database;
 use App\Services\KeuanganService;
+use App\Services\SecurityLogger;
 use PDO;
 use RuntimeException;
 use System\Http\Request;
@@ -286,7 +287,7 @@ class KeuanganController
 
         $memberId = (int) ($auth['id'] ?? 0);
         $stmt = $pdo->prepare('INSERT INTO akun_keuangan (name, kode_akun, nama_akun, kategori, tipe_arus, is_kas, is_modal, deskripsi, status, created_by, updated_by, created_at, updated_at) VALUES (:name, :kode_akun, :nama_akun, :kategori, :tipe_arus, :is_kas, :is_modal, :deskripsi, 1, :created_by, :updated_by, NOW(), NOW())');
-        $stmt->execute([
+        $params = [
             'name' => $namaAkun,
             'kode_akun' => $kodeAkun,
             'nama_akun' => $namaAkun,
@@ -297,7 +298,12 @@ class KeuanganController
             'deskripsi' => $deskripsi !== '' ? $deskripsi : null,
             'created_by' => $memberId > 0 ? $memberId : null,
             'updated_by' => $memberId > 0 ? $memberId : null,
-        ]);
+        ];
+        $stmt->execute($params);
+        $newId = (int) $pdo->lastInsertId();
+        SecurityLogger::logAudit('keuangan', 'CREATE_AKUN', 'akun_keuangan', (string) $newId,
+            null, ['kode_akun' => $kodeAkun, 'nama_akun' => $namaAkun, 'kategori' => $kategori],
+            true, SecurityLogger::RISK_LOW);
     }
 
     /**
@@ -339,6 +345,8 @@ class KeuanganController
             'status' => 'posted',
             'created_by' => $memberId > 0 ? $memberId : null,
         ]);
+        SecurityLogger::logAudit('keuangan', 'CREATE', 'keuangan', 'new',
+            null, ['tipe_arus' => $tipeArus, 'nominal' => $nominal, 'akun_keuangan_id' => $akunId]);
     }
 
     /**
@@ -371,7 +379,11 @@ class KeuanganController
         }
 
         $memberId = (int) ($auth['id'] ?? 0);
+        $beforeStmt = $pdo->prepare('SELECT kode_akun, nama_akun, kategori, tipe_arus, status FROM akun_keuangan WHERE id = :id LIMIT 1');
+        $beforeStmt->execute(['id' => $id]);
+        $before = $beforeStmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $stmt = $pdo->prepare('UPDATE akun_keuangan SET name = :name, kode_akun = :kode_akun, nama_akun = :nama_akun, kategori = :kategori, tipe_arus = :tipe_arus, is_kas = :is_kas, is_modal = :is_modal, deskripsi = :deskripsi, status = :status, updated_by = :updated_by, updated_at = NOW() WHERE id = :id AND deleted_at IS NULL');
+        $after = ['kode_akun' => $kodeAkun, 'nama_akun' => $namaAkun, 'kategori' => $kategori, 'tipe_arus' => $tipeArus, 'status' => $status];
         $stmt->execute([
             'id' => $id,
             'name' => $namaAkun,
@@ -385,6 +397,13 @@ class KeuanganController
             'status' => $status,
             'updated_by' => $memberId > 0 ? $memberId : null,
         ]);
+        SecurityLogger::logAudit('keuangan', 'UPDATE_AKUN', 'akun_keuangan', (string) $id,
+            is_array($before) ? $before : null, $after, true, SecurityLogger::RISK_LOW);
+        if ($isKas !== (int) ($before['is_kas'] ?? $isKas) || $isModal !== (int) ($before['is_modal'] ?? $isModal)) {
+            SecurityLogger::logSecurityEvent('USER_CONFIG_CHANGE', 'audit', 'high',
+                SecurityLogger::RISK_HIGH, 'KeuanganController',
+                ['target' => 'akun_keuangan', 'id' => $id], 'logged');
+        }
     }
 
     /**
@@ -397,8 +416,13 @@ class KeuanganController
             throw new RuntimeException('ID akun tidak valid.');
         }
         $memberId = (int) ($auth['id'] ?? 0);
+        $beforeStmt = $pdo->prepare('SELECT kode_akun, nama_akun FROM akun_keuangan WHERE id = :id LIMIT 1');
+        $beforeStmt->execute(['id' => $id]);
+        $before = $beforeStmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $stmt = $pdo->prepare('UPDATE akun_keuangan SET deleted_at = NOW(), updated_by = :updated_by, updated_at = NOW() WHERE id = :id AND deleted_at IS NULL');
         $stmt->execute(['id' => $id, 'updated_by' => $memberId > 0 ? $memberId : null]);
+        SecurityLogger::logAudit('keuangan', 'DELETE_AKUN', 'akun_keuangan', (string) $id,
+            is_array($before) ? $before : null, null, true, SecurityLogger::RISK_MEDIUM);
     }
 
     /**
@@ -428,6 +452,9 @@ class KeuanganController
         }
         $jenis = $tipeArus === 'pengeluaran' ? 'kredit' : 'debit';
         $memberId = (int) ($auth['id'] ?? 0);
+        $beforeStmt = $pdo->prepare('SELECT tanggal, no_ref, tipe_arus, nominal, akun_keuangan_id FROM keuangan WHERE id = :id LIMIT 1');
+        $beforeStmt->execute(['id' => $id]);
+        $before = $beforeStmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $stmt = $pdo->prepare('UPDATE keuangan SET tanggal = :tanggal, no_ref = :no_ref, akun_keuangan_id = :akun_keuangan_id, akun_keunagan_id = :akun_keunagan_id, jenis = :jenis, tipe_arus = :tipe_arus, nominal = :nominal, harga_operasional = :harga_operasional, metode_pembayaran = :metode_pembayaran, deskripsi = :deskripsi, ket_operasional = :ket_operasional, nama_operasional = :nama_operasional, updated_by = :updated_by, updated_at = NOW() WHERE id = :id AND deleted_at IS NULL');
         $stmt->execute([
             'id' => $id,
@@ -445,6 +472,9 @@ class KeuanganController
             'nama_operasional' => $deskripsi !== '' ? $deskripsi : null,
             'updated_by' => $memberId > 0 ? $memberId : null,
         ]);
+        SecurityLogger::logAudit('keuangan', 'UPDATE', 'keuangan', (string) $id,
+            is_array($before) ? $before : null,
+            ['tipe_arus' => $tipeArus, 'nominal' => $nominal, 'akun_keuangan_id' => $akunId]);
     }
 
     /**
@@ -457,7 +487,12 @@ class KeuanganController
             throw new RuntimeException('ID mutasi tidak valid.');
         }
         $memberId = (int) ($auth['id'] ?? 0);
+        $beforeStmt = $pdo->prepare('SELECT tanggal, no_ref, tipe_arus, nominal FROM keuangan WHERE id = :id LIMIT 1');
+        $beforeStmt->execute(['id' => $id]);
+        $before = $beforeStmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $stmt = $pdo->prepare('UPDATE keuangan SET deleted_at = NOW(), updated_by = :updated_by, updated_at = NOW() WHERE id = :id AND deleted_at IS NULL');
         $stmt->execute(['id' => $id, 'updated_by' => $memberId > 0 ? $memberId : null]);
+        SecurityLogger::logAudit('keuangan', 'DELETE', 'keuangan', (string) $id,
+            is_array($before) ? $before : null, null);
     }
 }
