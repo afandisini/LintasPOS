@@ -1,6 +1,12 @@
 # AitiCore Flex Changelog
 
 ## Unreleased
+- Aligned the transaction flow for sales, purchases, PO, supplier debt, debt repayment, and cash ledger so stock, cash, and liabilities follow real movement instead of transaction status.
+- Separated reporting for final purchases, PO, and supplier debt, with cashflow views limited to actual cash mutations.
+- Tightened access control for transaction and report endpoints, including role-based guards and modal visibility for sensitive fields such as purchase cost.
+- Added purchase flow validation for cash purchases and debt purchases, including supplier debt creation and repayment tracking.
+- Refined purchase-order handling so approval does not imply final settlement, cash outflow, or stock movement.
+- Updated the task baseline to reflect the remaining edge cases: returns, reversals, partial PO receipt, overdue debt aging, and audit trail follow-up.
 
 ## v0.3.0 - 2026-04-01
 - Added upgrade orchestration scaffolding with `php aiti upgrade:check` (read-only) and `php aiti upgrade:apply` (dry-run default).
