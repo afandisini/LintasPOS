@@ -3,7 +3,11 @@
 
 /** @var array<string,mixed> $auth */
 
-$avatar = avatar_meta($auth['avatar'] ?? null, (string) ($auth['name'] ?? 'User'));
+$avatarSource = $auth['avatar'] ?? null;
+if (($avatarSource === null || $avatarSource === '' || $avatarSource === '0') && (int) ($auth['id'] ?? 0) > 0) {
+    $avatarSource = user_avatar_id_by_id((int) $auth['id']);
+}
+$avatar = avatar_meta($avatarSource, (string) ($auth['name'] ?? 'User'));
 ?>
 <header class="topnav" id="topnav">
     <div class="t-left">

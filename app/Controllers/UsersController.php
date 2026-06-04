@@ -102,8 +102,13 @@ class UsersController
             $avatarFileId = null;
             $uploadedAvatar = $_FILES['avatar_file'] ?? null;
             if (is_array($uploadedAvatar) && (int) ($uploadedAvatar['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-                if ((int) ($uploadedAvatar['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-                    toast_add('Upload avatar tidak valid.', 'error');
+                $uploadError = (int) ($uploadedAvatar['error'] ?? UPLOAD_ERR_NO_FILE);
+                if ($uploadError !== UPLOAD_ERR_OK) {
+                    if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) {
+                        toast_add('Ukuran avatar melebihi batas hosting. Naikkan `upload_max_filesize` / `post_max_size` atau kecilkan file menjadi di bawah 2MB.', 'error');
+                    } else {
+                        toast_add('Upload avatar gagal diproses. Kode error: ' . $uploadError . '.', 'error');
+                    }
                     return Response::redirect('/profile');
                 }
 
@@ -127,8 +132,8 @@ class UsersController
                     return Response::redirect('/profile');
                 }
 
-                $mimeType = (string) mime_content_type($tmp);
-                if (!str_starts_with($mimeType, 'image/')) {
+                $mimeType = $this->detectMimeType($tmp);
+                if ($mimeType === '' || !str_starts_with($mimeType, 'image/')) {
                     toast_add('File avatar harus berupa gambar.', 'error');
                     return Response::redirect('/profile');
                 }
@@ -141,8 +146,12 @@ class UsersController
                 $userSegment = (string) $authId;
 
                 $baseStorage = app()->basePath('storage/filemanager/users/' . $roleSegment . '/' . $userSegment);
-                if (!is_dir($baseStorage) && !mkdir($baseStorage, 0775, true) && !is_dir($baseStorage)) {
+                if (!is_dir($baseStorage) && !mkdir($baseStorage, 0777, true) && !is_dir($baseStorage)) {
                     toast_add('Gagal membuat direktori avatar.', 'error');
+                    return Response::redirect('/profile');
+                }
+                if (!is_writable($baseStorage)) {
+                    toast_add('Folder avatar tidak writable di hosting.', 'error');
                     return Response::redirect('/profile');
                 }
 
@@ -698,5 +707,67 @@ class UsersController
         }
 
         return substr($clean, 0, 255);
+    }
+
+    private function detectMimeType(string $path): string
+    {
+        if ($path === '' || !is_file($path)) {
+            return '';
+        }
+
+        $mime = '';
+        if (class_exists(\finfo::class)) {
+            try {
+                $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                $detected = $finfo->file($path);
+                if (is_string($detected)) {
+                    $mime = trim($detected);
+                }
+            } catch (Throwable) {
+                $mime = '';
+            }
+        }
+
+        if ($mime === '' && function_exists('mime_content_type')) {
+            try {
+                $detected = mime_content_type($path);
+                if (is_string($detected)) {
+                    $mime = trim($detected);
+                }
+            } catch (Throwable) {
+                $mime = '';
+            }
+        }
+
+        if ($mime === '' && function_exists('getimagesize')) {
+            try {
+                $info = @getimagesize($path);
+                if (is_array($info) && isset($info['mime']) && is_string($info['mime'])) {
+                    $mime = trim($info['mime']);
+                }
+            } catch (Throwable) {
+                $mime = '';
+            }
+        }
+
+        if ($mime === '' && function_exists('exif_imagetype')) {
+            try {
+                $type = @exif_imagetype($path);
+                $map = [
+                    IMAGETYPE_GIF => 'image/gif',
+                    IMAGETYPE_JPEG => 'image/jpeg',
+                    IMAGETYPE_PNG => 'image/png',
+                    IMAGETYPE_WEBP => 'image/webp',
+                    IMAGETYPE_BMP => 'image/bmp',
+                ];
+                if (is_int($type) && isset($map[$type])) {
+                    $mime = $map[$type];
+                }
+            } catch (Throwable) {
+                $mime = '';
+            }
+        }
+
+        return $mime;
     }
 }

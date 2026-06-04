@@ -121,8 +121,14 @@ if (!function_exists('base_url')) {
         $isWebRequest = isset($_SERVER['HTTP_HOST']) && (string) $_SERVER['HTTP_HOST'] !== '';
 
         if ($isWebRequest) {
-            $https = (string) ($_SERVER['HTTPS'] ?? '');
-            $scheme = ($https === 'on' || $https === '1') ? 'https' : 'http';
+            $forwardedProto = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
+            $forwardedSsl = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '')));
+            $requestScheme = strtolower(trim((string) ($_SERVER['REQUEST_SCHEME'] ?? '')));
+            $https = strtolower(trim((string) ($_SERVER['HTTPS'] ?? '')));
+            $scheme = 'http';
+            if ($forwardedProto === 'https' || $forwardedSsl === 'on' || $requestScheme === 'https' || in_array($https, ['on', '1', 'https'], true)) {
+                $scheme = 'https';
+            }
             $host = (string) $_SERVER['HTTP_HOST'];
             // Use host root to avoid /public leakage in generated asset URLs.
             $baseFromRequest = $scheme . '://' . $host;
@@ -161,7 +167,7 @@ if (!function_exists('avatar_url')) {
             if ($fileId > 0) {
                 $relative = filemanager_path_by_id($fileId);
                 if ($relative !== '') {
-                    return site_url('media?path=' . urlencode($relative));
+                    return site_url('media/' . $fileId);
                 }
             }
             return '';
@@ -174,6 +180,10 @@ if (!function_exists('avatar_url')) {
 
         if (str_starts_with($avatar, 'http://') || str_starts_with($avatar, 'https://')) {
             return $avatar;
+        }
+
+        if (str_starts_with($avatar, 'storage/')) {
+            $avatar = substr($avatar, 8);
         }
 
         if (str_starts_with($avatar, 'filemanager/')) {
@@ -193,6 +203,40 @@ if (!function_exists('avatar_url')) {
         }
 
         return '';
+    }
+}
+
+if (!function_exists('store_logo_url')) {
+    function store_logo_url(mixed $logo): string
+    {
+        if (is_int($logo) || (is_string($logo) && ctype_digit(trim($logo)))) {
+            $fileId = (int) $logo;
+            if ($fileId > 0) {
+                $relative = filemanager_path_by_id($fileId);
+                if ($relative !== '') {
+                    return site_url('media/public/' . $fileId);
+                }
+            }
+        } elseif (is_string($logo)) {
+            $logo = trim($logo);
+            if ($logo !== '' && $logo !== '0' && strtolower($logo) !== 'null') {
+                if (str_starts_with($logo, 'http://') || str_starts_with($logo, 'https://')) {
+                    return $logo;
+                }
+                if (str_starts_with($logo, 'storage/')) {
+                    $logo = substr($logo, 8);
+                }
+                if (str_starts_with($logo, 'filemanager/')) {
+                    $relative = ltrim($logo, '/');
+                    $absolute = app()->basePath('storage/' . str_replace('/', DIRECTORY_SEPARATOR, $relative));
+                    if (is_file($absolute)) {
+                        return site_url('media/public?path=' . urlencode($relative));
+                    }
+                }
+            }
+        }
+
+        return base_url('favicon.ico');
     }
 }
 
@@ -226,6 +270,36 @@ if (!function_exists('filemanager_path_by_id')) {
 
         $cache[$fileId] = '';
         return '';
+    }
+}
+
+if (!function_exists('user_avatar_id_by_id')) {
+    function user_avatar_id_by_id(int $userId): int
+    {
+        if ($userId <= 0) {
+            return 0;
+        }
+
+        static $cache = [];
+        if (array_key_exists($userId, $cache)) {
+            return (int) $cache[$userId];
+        }
+
+        try {
+            $pdo = Database::connection();
+            $stmt = $pdo->prepare('SELECT avatar FROM users WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $userId]);
+            $value = $stmt->fetchColumn();
+            if (is_scalar($value) && ctype_digit(trim((string) $value))) {
+                $cache[$userId] = (int) $value;
+                return (int) $value;
+            }
+        } catch (\Throwable) {
+            // no-op
+        }
+
+        $cache[$userId] = 0;
+        return 0;
     }
 }
 
@@ -349,19 +423,16 @@ if (!function_exists('store_brand_logo_html')) {
         $icons = toko('icons', '');
         $storeName = toko('nama_toko', brand_name());
 
-        if ($mode === 'gambar' && $logoId !== '' && $logoId !== '0') {
-            $relative = filemanager_path_by_id((int) $logoId);
-            if ($relative !== '' && str_starts_with($relative, 'filemanager/toko/')) {
-                $url = site_url('media/public?path=' . urlencode($relative));
-                return '<img src="' . Escaper::escape($url) . '" alt="' . Escaper::escape($storeName) . '" style="height:32px;width:auto;object-fit:contain;">';
-            }
+        $logoUrl = store_logo_url($logoId);
+        if ($mode === 'gambar') {
+            return '<img src="' . Escaper::escape($logoUrl) . '" alt="' . Escaper::escape($storeName) . '" style="height:32px;width:auto;object-fit:contain;">';
         }
 
         if ($icons !== '') {
             return '<i class="' . Escaper::escape($icons) . '"></i>';
         }
 
-        return '<span>' . Escaper::escape(avatar_initials($storeName)) . '</span>';
+        return '<img src="' . Escaper::escape($logoUrl) . '" alt="' . Escaper::escape($storeName) . '" style="height:32px;width:32px;object-fit:contain;">';
     }
 }
 
@@ -768,7 +839,7 @@ if (!function_exists('render_image_cell')) {
         if (ctype_digit($source)) {
             $relative = filemanager_path_by_id((int) $source);
             if ($relative !== '') {
-                $source = site_url('media?path=' . urlencode($relative));
+                $source = site_url('media/' . (int) $source);
             }
         } elseif (str_starts_with($source, 'filemanager/')) {
             $source = site_url('media?path=' . urlencode(ltrim($source, '/')));
@@ -795,7 +866,7 @@ if (!function_exists('render_file_cell')) {
         if (ctype_digit($source)) {
             $relative = filemanager_path_by_id((int) $source);
             if ($relative !== '') {
-                $source = site_url('media?path=' . urlencode($relative));
+                $source = site_url('media/' . (int) $source);
             }
         } elseif (str_starts_with($source, 'filemanager/')) {
             $source = site_url('media?path=' . urlencode(ltrim($source, '/')));

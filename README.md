@@ -217,6 +217,13 @@ php aiti upgrade:apply
 - Request `HEAD` otomatis dipetakan ke route `GET`, body response tidak dikirim.
 - Static asset seperti `/storage/...` atau file di `public/` dilayani langsung oleh PHP built-in server.
 
+## Apache Deployment
+
+- Paling rapi: set `DocumentRoot` domain ke folder `public/`.
+- Jika source harus tetap berada di subfolder project, taruh `.htaccess` di root hosting dan biarkan file itu me-rewrite ke `public/`.
+- Untuk production, set `APP_URL=https://lintaspos.co-id.id`.
+- Jika HTTPS aktif, set `SESSION_SECURE=true`.
+
 ## Maintenance
 
 - `php aiti optimize` menjalankan clear berurutan untuk cache config, routes, dan views.

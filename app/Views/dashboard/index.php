@@ -9,6 +9,15 @@
 /** @var string $chart_values_json */
 /** @var array<int,array<string,mixed>> $recent_sales */
 /** @var array<int,array<string,mixed>> $low_stocks */
+
+$toText = static function (mixed $value, string $default = '-'): string {
+    $text = trim((string) $value);
+    return $text !== '' ? $text : $default;
+};
+
+$toInt = static function (mixed $value): int {
+    return (int) ((string) $value);
+};
 ?>
 <?= raw(view('partials/dashboard/head', ['title' => $title ?? (brand_name() . ' Dashboard')])) ?>
 <?= raw(view('partials/dashboard/shell_open', ['auth' => $auth, 'activeMenu' => $activeMenu ?? 'dashboard'])) ?>
@@ -147,7 +156,7 @@
                                 <div class="act-dot" style="background:var(--accent)"></div>
                                 <div class="act-text">
                                     <p><strong><?= e((string) ($row['no_trx'] ?? '-')) ?></strong> — <?= e((string) ($row['pelanggan'] ?? '-')) ?> <span class="sbadge inf small"><span class="sd"></span><?= e($metode) ?></span></p>
-                                    <span class="atime"><?= e((string) ($row['tanggal_input'] ?? '-')) ?> · Rp <?= e(number_format((int) ($row['total'] ?? 0), 0, ',', '.')) ?></span>
+                                    <span class="atime"><?= e((string) ($row['tanggal_input'] ?? '-')) ?> · Rp <?= e(number_format($toInt($row['total'] ?? 0), 0, ',', '.')) ?></span>
                                 </div>
                             </div>
                         <?php endforeach; ?>

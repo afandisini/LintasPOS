@@ -176,7 +176,7 @@ class TokoController
                     return Response::redirect('/toko');
                 }
 
-                $mimeType = (string) mime_content_type($tmp);
+                $mimeType = $this->detectMimeType($tmp);
                 $allowedSvgMimeTypes = ['image/svg+xml', 'text/xml', 'application/xml'];
                 $isSvgMime = in_array(strtolower($mimeType), $allowedSvgMimeTypes, true);
                 if (!str_starts_with($mimeType, 'image/') && !($extension === 'svg' && $isSvgMime)) {
@@ -185,8 +185,12 @@ class TokoController
                 }
 
                 $baseStorage = app()->basePath('storage/filemanager/toko/' . $storeId);
-                if (!is_dir($baseStorage) && !mkdir($baseStorage, 0775, true) && !is_dir($baseStorage)) {
+                if (!is_dir($baseStorage) && !mkdir($baseStorage, 0777, true) && !is_dir($baseStorage)) {
                     toast_add('Gagal membuat direktori logo toko.', 'error');
+                    return Response::redirect('/toko');
+                }
+                if (!is_writable($baseStorage)) {
+                    toast_add('Folder logo toko tidak writable di hosting.', 'error');
                     return Response::redirect('/toko');
                 }
 
@@ -261,7 +265,8 @@ class TokoController
             }
 
             toast_add('Pengaturan toko berhasil diperbarui.', 'success');
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            error_log('[TokoController] update failed: ' . $exception->getMessage());
             if ($newLogoFilemanagerId > 0) {
                 try {
                     $pdoRollback = Database::connection();
@@ -387,5 +392,38 @@ class TokoController
         }
 
         return substr($clean, 0, 255);
+    }
+
+    private function detectMimeType(string $path): string
+    {
+        if ($path === '' || !is_file($path)) {
+            return '';
+        }
+
+        $mime = '';
+        if (class_exists(\finfo::class)) {
+            try {
+                $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                $detected = $finfo->file($path);
+                if (is_string($detected)) {
+                    $mime = trim($detected);
+                }
+            } catch (Throwable) {
+                $mime = '';
+            }
+        }
+
+        if ($mime === '' && function_exists('mime_content_type')) {
+            try {
+                $detected = mime_content_type($path);
+                if (is_string($detected)) {
+                    $mime = trim($detected);
+                }
+            } catch (Throwable) {
+                $mime = '';
+            }
+        }
+
+        return $mime;
     }
 }

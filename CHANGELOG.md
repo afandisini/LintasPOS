@@ -1,6 +1,11 @@
 # AitiCore Flex Changelog
 
 ## Unreleased
+- Fixed hosting compatibility for uploaded assets and profile/store images on Apache/phpMyAdmin deployments.
+- Added media fallback handling so legacy `storage/filemanager/...` URLs and numeric file IDs still resolve after upload.
+- Hardened avatar/store logo upload validation for hosting environments without `fileinfo`, with safer MIME detection fallback.
+- Added favicon fallback for store branding when `toko.logo` is empty or null.
+- Fixed login/profile dark mode placeholder contrast and ensured avatar refresh survives logout/login cycles.
 - Aligned the transaction flow for sales, purchases, PO, supplier debt, debt repayment, and cash ledger so stock, cash, and liabilities follow real movement instead of transaction status.
 - Separated reporting for final purchases, PO, and supplier debt, with cashflow views limited to actual cash mutations.
 - Tightened access control for transaction and report endpoints, including role-based guards and modal visibility for sensitive fields such as purchase cost.

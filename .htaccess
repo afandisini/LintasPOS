@@ -1,0 +1,16 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Keep ACME / verification files reachable from the hosting root.
+    RewriteRule ^\.well-known/ - [L]
+
+    # Backward compatibility for legacy storage URLs stored in the database.
+    RewriteRule ^storage/(filemanager/.*)$ /media?path=$1 [L,QSA,NC]
+
+    # Do not rewrite the public/ directory again.
+    RewriteRule ^public/ - [L]
+
+    # Route all requests into public/ so the app can stay in a subfolder
+    # while the domain still serves from the root URL.
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

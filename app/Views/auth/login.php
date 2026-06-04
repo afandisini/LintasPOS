@@ -11,6 +11,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($title ?? ('Login ' . brand_name())) ?></title>
+    <link rel="icon" href="<?= e(base_url('favicon.ico')) ?>" type="image/x-icon">
     <script>
         (function () {
             try {
@@ -24,7 +25,6 @@
     </script>
     <link href="<?= e(base_url('assets/vendor/bootstrap/bootstrap.min.css')) ?>" rel="stylesheet">
     <link href="<?= e(base_url('assets/vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="<?= e(base_url('assets/css/login.css')) ?>" rel="stylesheet">
     <link href="<?= e(base_url('assets/css/toast.css')) ?>" rel="stylesheet">
 </head>

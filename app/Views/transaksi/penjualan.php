@@ -15,6 +15,14 @@
 /** @var int $activeHoldId */
 /** @var array<string,mixed> $lastReceipt */
 
+$toText = static function (mixed $value, string $default = '-'): string {
+    $text = trim((string) $value);
+    return $text !== '' ? $text : $default;
+};
+$toInt = static function (mixed $value): int {
+    return (int) ((string) $value);
+};
+
 $mediaUrl = static function ($rawPath): string {
     $path = trim((string) $rawPath);
     if ($path === '') {
@@ -23,6 +31,9 @@ $mediaUrl = static function ($rawPath): string {
     if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, 'data:image/')) {
         return $path;
     }
+    if (str_starts_with($path, 'storage/')) {
+        $path = substr($path, 8);
+    }
     if (str_starts_with($path, 'filemanager/')) {
         return '/media?path=' . rawurlencode($path);
     }
@@ -30,12 +41,12 @@ $mediaUrl = static function ($rawPath): string {
 };
 
 $activeHoldCode = '';
-if ((int) ($activeHoldId ?? 0) > 0) {
+if ($toInt($activeHoldId ?? 0) > 0) {
     foreach ($holdRows as $holdRow) {
         if (!is_array($holdRow)) {
             continue;
         }
-        if ((int) ($holdRow['id'] ?? 0) === (int) $activeHoldId) {
+        if ($toInt($holdRow['id'] ?? 0) === $toInt($activeHoldId ?? 0)) {
             $activeHoldCode = (string) ($holdRow['hold_code'] ?? '');
             break;
         }
@@ -83,14 +94,14 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                             <?php if (!is_array($row)) {
                                 continue;
                             } ?>
-                            <div class="hold-card" data-hold-id="<?= e((string) ($row['id'] ?? '0')) ?>" data-hold-code="<?= e((string) ($row['hold_code'] ?? '-')) ?>" onclick="openResumeHoldModal(this)">
+                            <div class="hold-card" data-hold-id="<?= e((string) $toInt($row['id'] ?? 0)) ?>" data-hold-code="<?= e($toText($row['hold_code'] ?? '-')) ?>" onclick="openResumeHoldModal(this)">
                                 <div class="hold-card-top">
-                                    <span class="hold-card-code"><?= e((string) ($row['hold_code'] ?? '-')) ?></span>
+                                    <span class="hold-card-code"><?= e($toText($row['hold_code'] ?? '-')) ?></span>
                                     <div class="hold-card-tools">
                                         <?php if (!empty($row['payment_method'])): ?>
                                             <span class="sbadge inf" style="font-size:10px;padding:3px 6px;"><?= e((string) $row['payment_method']) ?></span>
                                         <?php endif; ?>
-                                        <button type="button" class="hold-card-close" title="Hapus hold" onclick="event.stopPropagation(); posDeleteHold(<?= e((string) ($row['id'] ?? '0')) ?>, this);">
+                                        <button type="button" class="hold-card-close" title="Hapus hold" onclick="event.stopPropagation(); posDeleteHold(<?= e((string) $toInt($row['id'] ?? 0)) ?>, this);">
                                             <i class="bi bi-x-lg"></i>
                                         </button>
                                     </div>
@@ -99,7 +110,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                                     <div class="hold-card-note"><?= e((string) $row['catatan']) ?></div>
                                 <?php endif; ?>
                                 <div class="hold-card-bottom">
-                                    <span class="hold-card-time"><i class="bi bi-clock"></i> <?= e((string) ($row['created_at'] ?? '-')) ?></span>
+                                    <span class="hold-card-time"><i class="bi bi-clock"></i> <?= e($toText($row['created_at'] ?? '-')) ?></span>
                                     <span class="hold-card-action"><i class="bi bi-play-fill"></i> Lanjutkan</span>
                                 </div>
                             </div>
@@ -116,9 +127,9 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                         <div class="d-flex align-items-center gap-2">
                             <span class="panel-title"><i class="bi bi-cart3"></i> Keranjang Aktif</span>
                             <span id="transactionModeBadge"
-                                class="sbadge <?= (int) ($activeHoldId ?? 0) > 0 ? 'inf' : 'scc' ?>"
-                                data-mode="<?= (int) ($activeHoldId ?? 0) > 0 ? 'hold' : 'new' ?>">
-                                <?= (int) ($activeHoldId ?? 0) > 0 ? e('Hold: ' . ($activeHoldCode !== '' ? $activeHoldCode : ('#' . (string) ((int) $activeHoldId)))) : 'Transaksi Baru' ?>
+                                class="sbadge <?= $toInt($activeHoldId ?? 0) > 0 ? 'inf' : 'scc' ?>"
+                                data-mode="<?= $toInt($activeHoldId ?? 0) > 0 ? 'hold' : 'new' ?>">
+                                <?= $toInt($activeHoldId ?? 0) > 0 ? e('Hold: ' . ($activeHoldCode !== '' ? $activeHoldCode : ('#' . (string) $toInt($activeHoldId ?? 0)))) : 'Transaksi Baru' ?>
                             </span>
                         </div>
                         <form method="post" action="/transaksi/penjualan/cart/clear" data-pos-ajax data-pos-msg="Keranjang dikosongkan">
@@ -155,19 +166,19 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                                                 continue;
                                             } ?>
                                             <?php
-                                            $qty = max(1, (int) ((string) ($item['jumlah'] ?? '1')));
-                                            $harga = max(0, (int) ((string) ($item['jual'] ?? '0')));
-                                            $diskon = max(0, (int) ((string) ($item['diskon'] ?? '0')));
+                                            $qty = max(1, $toInt($item['jumlah'] ?? 1));
+                                            $harga = max(0, $toInt($item['jual'] ?? 0));
+                                            $diskon = max(0, $toInt($item['diskon'] ?? 0));
                                             $hargaSetelahDiskon = max(0, $harga - $diskon);
                                             $lineTotal = max(0, ($harga - $diskon) * $qty);
                                             $itemType = (string) ($item['item_type'] ?? 'barang');
                                             ?>
-                                            <tr class="pos-cart-row" data-cart-id="<?= e((string) ($item['id'] ?? '0')) ?>">
+                                            <tr class="pos-cart-row" data-cart-id="<?= e((string) $toInt($item['id'] ?? 0)) ?>">
                                                 <td>
                                                     <div class="pos-item-info">
                                                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                                             <span class="sbadge <?= $itemType === 'jasa' ? 'inf' : 'wrn' ?>"><?= e(ucfirst($itemType)) ?></span>
-                                                            <span class="pos-item-name"><?= e((string) ($item['nama_barang'] ?? '-')) ?></span>
+                                                            <span class="pos-item-name"><?= e($toText($item['nama_barang'] ?? '-')) ?></span>
                                                         </div>
                                                         <?php if ($diskon > 0): ?>
                                                             <span class="pos-item-disc"><i class="bi bi-tag"></i> Disc: <?= e(format_currency_id($diskon)) ?>/item</span>
@@ -185,7 +196,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                                                 <td style="text-align:center;">
                                                     <form method="post" action="/transaksi/penjualan/cart/update" class="pos-qty-form">
                                                         <?= raw(csrf_field()) ?>
-                                                        <input type="hidden" name="cart_id" value="<?= e((string) ($item['id'] ?? '0')) ?>">
+                                                        <input type="hidden" name="cart_id" value="<?= e((string) $toInt($item['id'] ?? 0)) ?>">
                                                         <input class="fi pos-qty-input" type="number" name="qty" min="0" value="<?= e((string) $qty) ?>" required>
                                                     </form>
                                                 </td>
@@ -193,7 +204,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                                                 <td>
                                                     <form method="post" action="/transaksi/penjualan/cart/remove" data-pos-ajax data-pos-msg="Item dihapus dari keranjang">
                                                         <?= raw(csrf_field()) ?>
-                                                        <input type="hidden" name="cart_id" value="<?= e((string) ($item['id'] ?? '0')) ?>">
+                                                        <input type="hidden" name="cart_id" value="<?= e((string) $toInt($item['id'] ?? 0)) ?>">
                                                         <button type="submit" class="pos-del-btn" title="Hapus item"><i class="bi bi-x-lg"></i></button>
                                                     </form>
                                                 </td>
@@ -207,19 +218,19 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                     <div class="pos-cart-summary" id="cartSummary">
                         <div class="pos-summary-row">
                             <span>Total Qty</span>
-                            <span id="summaryQty"><?= e((string) ((int) ((string) ($summary['qty'] ?? '0')))) ?></span>
+                            <span id="summaryQty"><?= e((string) $toInt($summary['qty'] ?? 0)) ?></span>
                         </div>
                         <div class="pos-summary-row">
                             <span>Subtotal</span>
-                            <span id="summarySubtotal"><?= e(format_currency_id((int) ((string) ($summary['subtotal'] ?? '0')))) ?></span>
+                            <span id="summarySubtotal"><?= e(format_currency_id($toInt($summary['subtotal'] ?? 0))) ?></span>
                         </div>
                         <div class="pos-summary-row">
                             <span>Diskon</span>
-                            <span id="summaryDiskon" style="color:var(--danger);"><?= e(format_currency_id((int) ((string) ($summary['diskon'] ?? '0')))) ?></span>
+                            <span id="summaryDiskon" style="color:var(--danger);"><?= e(format_currency_id($toInt($summary['diskon'] ?? 0))) ?></span>
                         </div>
                         <div class="pos-summary-row grand">
                             <span>Grand Total</span>
-                            <span id="summaryGrandTotal" data-value="<?= e((string) ((int) ((string) ($summary['grand_total'] ?? '0')))) ?>"><?= e(format_currency_id((int) ((string) ($summary['grand_total'] ?? '0')))) ?></span>
+                            <span id="summaryGrandTotal" data-value="<?= e((string) $toInt($summary['grand_total'] ?? 0)) ?>"><?= e(format_currency_id($toInt($summary['grand_total'] ?? 0))) ?></span>
                         </div>
                     </div>
                 </div>
@@ -266,7 +277,7 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                     </div>
                     <form method="post" action="/transaksi/penjualan/checkout" data-pos-checkout id="formCheckout">
                         <?= raw(csrf_field()) ?>
-                        <input type="hidden" id="activeHoldIdInput" name="active_hold_id" value="<?= e((string) ((int) ($activeHoldId ?? 0))) ?>" data-hold-code="<?= e($activeHoldCode) ?>">
+                        <input type="hidden" id="activeHoldIdInput" name="active_hold_id" value="<?= e((string) $toInt($activeHoldId ?? 0)) ?>" data-hold-code="<?= e($activeHoldCode) ?>">
                         <div class="fg">
                             <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
                                 <label class="fl" for="checkoutPelanggan" style="margin-bottom:0;">Pelanggan</label>
@@ -471,17 +482,17 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                             continue;
                         } ?>
                         <?php
-                        $itemId = max(0, (int) ($item['id'] ?? 0));
+                        $itemId = max(0, $toInt($item['id'] ?? 0));
                         if ($itemId <= 0) {
                             continue;
                         }
                         $itemName = (string) ($item['nama_barang'] ?? '-');
                         $itemCode = (string) ($item['id_barang'] ?? '-');
-                        $itemPrice = max(0, (int) ($item['harga_jual'] ?? 0));
-                        $itemStock = max(0, (int) ($item['stok'] ?? 0));
-                        $itemImage = $mediaUrl($item['gambar_path'] ?? $item['gambar'] ?? '');
-                        $itemDiskon = max(0, (int) ($item['diskon_aktif'] ?? 0));
-                        $itemPriceAfter = max(0, (int) ($item['harga_jual_diskon'] ?? $itemPrice));
+                        $itemPrice = max(0, $toInt($item['harga_jual'] ?? 0));
+                        $itemStock = max(0, $toInt($item['stok'] ?? 0));
+                        $itemImage = $mediaUrl($item['gambar'] ?? $item['gambar_path'] ?? '');
+                        $itemDiskon = max(0, $toInt($item['diskon_aktif'] ?? 0));
+                        $itemPriceAfter = max(0, $toInt($item['harga_jual_diskon'] ?? $itemPrice));
                         ?>
                         <article class="pos-pick-card" data-pick-item data-item-type="barang" data-item-id="<?= e((string) $itemId) ?>" data-pick-keywords="<?= e(strtolower(trim($itemName . ' ' . $itemCode))) ?>">
                             <label class="pos-pick-select">
@@ -565,14 +576,14 @@ if ((int) ($activeHoldId ?? 0) > 0) {
                             continue;
                         } ?>
                         <?php
-                        $itemId = max(0, (int) ($item['id'] ?? 0));
+                        $itemId = max(0, $toInt($item['id'] ?? 0));
                         if ($itemId <= 0) {
                             continue;
                         }
                         $itemName = (string) ($item['nama'] ?? '-');
                         $itemCode = (string) ($item['id_jasa'] ?? '-');
-                        $itemPrice = max(0, (int) ($item['harga'] ?? 0));
-                        $itemImage = $mediaUrl($item['gambar_path'] ?? $item['gambar_img'] ?? '');
+                        $itemPrice = max(0, $toInt($item['harga'] ?? 0));
+                        $itemImage = $mediaUrl($item['gambar_img'] ?? $item['gambar_path'] ?? '');
                         ?>
                         <article class="pos-pick-card" data-pick-item data-item-type="jasa" data-item-id="<?= e((string) $itemId) ?>" data-pick-keywords="<?= e(strtolower(trim($itemName . ' ' . $itemCode))) ?>">
                             <label class="pos-pick-select">

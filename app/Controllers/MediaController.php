@@ -17,19 +17,49 @@ class MediaController
         return $this->serveFile($rawPath, false);
     }
 
+    public function showById(Request $request, string $id): Response
+    {
+        $relative = $this->pathById((int) $id);
+        if ($relative === '') {
+            return Response::html('Not Found', 404);
+        }
+
+        return $this->serveRelativePath($relative, false);
+    }
+
     public function showPublic(Request $request): Response
     {
         $rawPath = (string) $request->input('path', '');
-        $relative = ltrim(str_replace('\\', '/', trim($rawPath)), '/');
+        $relative = $this->normalizeRelativePath($rawPath);
         if (!str_starts_with($relative, 'filemanager/toko/')) {
             return Response::html('Forbidden', 403);
         }
-        return $this->serveFile($rawPath, true);
+        return $this->serveRelativePath($relative, true);
+    }
+
+    public function showPublicById(Request $request, string $id): Response
+    {
+        $relative = $this->pathById((int) $id);
+        if ($relative === '' || !str_starts_with($relative, 'filemanager/toko/')) {
+            return Response::html('Forbidden', 403);
+        }
+
+        return $this->serveRelativePath($relative, true);
     }
 
     private function serveFile(string $rawPath, bool $skipAuth): Response
     {
-        $relative = ltrim(str_replace('\\', '/', trim($rawPath)), '/');
+        $relative = $this->normalizeRelativePath($rawPath);
+        if ($relative === '' || str_contains($relative, '..') || !str_starts_with($relative, 'filemanager/')) {
+            return Response::html('Not Found', 404);
+        }
+
+        return $this->serveRelativePath($relative, $skipAuth);
+    }
+
+    private function serveRelativePath(string $relative, bool $skipAuth): Response
+    {
+        $relative = $this->normalizeRelativePath($relative);
         if ($relative === '' || str_contains($relative, '..') || !str_starts_with($relative, 'filemanager/')) {
             return Response::html('Not Found', 404);
         }
@@ -63,7 +93,7 @@ class MediaController
             return Response::html('Not Found', 404);
         }
 
-        $mime = (string) mime_content_type($fullPathReal);
+        $mime = $this->detectMimeType($fullPathReal);
         if ($mime === '') {
             $mime = 'application/octet-stream';
         }
@@ -78,6 +108,40 @@ class MediaController
         }
 
         return new Response($content, 200, $headers);
+    }
+
+    private function normalizeRelativePath(string $path): string
+    {
+        $relative = ltrim(str_replace('\\', '/', trim($path)), '/');
+        if (str_starts_with($relative, 'storage/')) {
+            $relative = substr($relative, 8);
+        }
+
+        return $relative;
+    }
+
+    private function pathById(int $id): string
+    {
+        if ($id <= 0) {
+            return '';
+        }
+
+        try {
+            $pdo = Database::connection();
+            $stmt = $pdo->prepare('SELECT path FROM filemanager WHERE id = :id AND deleted_at IS NULL LIMIT 1');
+            $stmt->execute(['id' => $id]);
+            $path = $stmt->fetchColumn();
+            if (is_string($path)) {
+                $relative = $this->normalizeRelativePath($path);
+                if ($relative !== '' && str_starts_with($relative, 'filemanager/')) {
+                    return $relative;
+                }
+            }
+        } catch (Throwable) {
+            return '';
+        }
+
+        return '';
     }
 
     private function canAccessBarangMedia(string $relativePath): bool
@@ -119,5 +183,38 @@ class MediaController
         }
 
         return in_array($role, ['administrator', 'admin', 'superadmin', 'super-admin'], true);
+    }
+
+    private function detectMimeType(string $path): string
+    {
+        if ($path === '' || !is_file($path)) {
+            return '';
+        }
+
+        $mime = '';
+        if (class_exists(\finfo::class)) {
+            try {
+                $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                $detected = $finfo->file($path);
+                if (is_string($detected)) {
+                    $mime = trim($detected);
+                }
+            } catch (Throwable) {
+                $mime = '';
+            }
+        }
+
+        if ($mime === '' && function_exists('mime_content_type')) {
+            try {
+                $detected = mime_content_type($path);
+                if (is_string($detected)) {
+                    $mime = trim($detected);
+                }
+            } catch (Throwable) {
+                $mime = '';
+            }
+        }
+
+        return $mime;
     }
 }

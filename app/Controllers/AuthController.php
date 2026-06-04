@@ -66,6 +66,12 @@ class AuthController
         }
 
         $user = is_array($result['user'] ?? null) ? $result['user'] : [];
+        $avatar = $user['avatar'] ?? null;
+        if (is_string($avatar) && ctype_digit(trim($avatar))) {
+            $avatar = (int) $avatar;
+        } elseif (!is_int($avatar) || $avatar <= 0) {
+            $avatar = null;
+        }
 
         session_regenerate_id(true);
         $_SESSION['auth'] = [
@@ -74,7 +80,7 @@ class AuthController
             'username' => (string) ($user['username'] ?? ''),
             'email' => (string) ($user['email'] ?? ''),
             'role' => (string) ($user['role'] ?? ''),
-            'avatar' => $user['avatar'] ?? null,
+            'avatar' => $avatar,
             'ip' => $ipAddress,
             'ua_hash' => hash('sha256', (string) ($_SERVER['HTTP_USER_AGENT'] ?? 'unknown')),
             'login_at' => date('Y-m-d H:i:s'),

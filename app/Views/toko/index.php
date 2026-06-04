@@ -13,7 +13,7 @@ $storePhone = (string) ($store['tlp'] ?? '');
 $storeOwner = (string) ($store['nama_pemilik'] ?? '');
 $storeIcon = trim((string) ($store['icons'] ?? ''));
 $storeLogoMode = trim((string) ($store['logo_mode'] ?? 'icon'));
-$storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeName : 'Toko');
+$storeLogoUrl = store_logo_url($store['logo'] ?? null);
 ?>
 <?= raw(view('partials/dashboard/head', ['title' => $title ?? 'Pengaturan Toko'])) ?>
 <?= raw(view('partials/dashboard/shell_open', ['auth' => $auth, 'activeMenu' => $activeMenu ?? 'toko'])) ?>
@@ -120,12 +120,12 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
                         <div class="act-text">
                             <p><strong id="logo_label"><?= $storeLogoMode === 'gambar' ? 'Gambar:' : 'Icon:' ?></strong></p>
                             <div class="store-logo-box">
-                                <?php if ($storeLogoMode === 'gambar' && $storeLogoMeta['has_image']): ?>
-                                    <img class="store-logo" src="<?= e($storeLogoMeta['url']) ?>" alt="<?= e($storeName !== '' ? $storeName : 'Toko') ?>">
+                                <?php if ($storeLogoMode === 'gambar'): ?>
+                                    <img class="store-logo" src="<?= e($storeLogoUrl) ?>" alt="<?= e($storeName !== '' ? $storeName : 'Toko') ?>">
                                 <?php elseif ($storeLogoMode === 'icon' && $storeIcon !== ''): ?>
                                     <span class="store-logo is-icon"><i class="<?= e($storeIcon) ?>"></i></span>
                                 <?php else: ?>
-                                    <span class="store-logo is-initials"><?= e($storeLogoMeta['initials']) ?></span>
+                                    <img class="store-logo" src="<?= e($storeLogoUrl) ?>" alt="<?= e($storeName !== '' ? $storeName : 'Toko') ?>">
                                 <?php endif; ?>
                             </div>
                             <span class="atime">Upload logo baru untuk mengganti logo lama.</span>
@@ -217,6 +217,8 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
         var logoFileGroup = document.getElementById('logo_file') ? document.getElementById('logo_file').closest('.fg') : null;
         var iconsGroup = document.getElementById('icons_picker_btn') ? document.getElementById('icons_picker_btn').closest('.fg') : null;
         var logoBox = document.querySelector('.store-logo-box');
+        var fallbackLogoUrl = <?= json_encode($storeLogoUrl, JSON_UNESCAPED_UNICODE) ?>;
+        var fallbackLogoAlt = <?= json_encode($storeName !== '' ? $storeName : 'Toko', JSON_UNESCAPED_UNICODE) ?>;
 
         if (applyBtn && typeSelect) {
             applyBtn.addEventListener('click', function() {
@@ -228,18 +230,17 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
                     if (logoFileGroup) logoFileGroup.style.display = '';
                     if (iconsGroup) iconsGroup.style.display = 'none';
                     if (logoBox) {
-                        // Sembunyikan icon, tampilkan gambar atau initials
                         var iconSpan = logoBox.querySelector('span.is-icon');
                         if (iconSpan) iconSpan.style.display = 'none';
                         var img = logoBox.querySelector('img.store-logo');
+                        if (!img) {
+                            logoBox.insertAdjacentHTML('beforeend', '<img class="store-logo" src="' + fallbackLogoUrl + '" alt="' + fallbackLogoAlt + '">');
+                            img = logoBox.querySelector('img.store-logo');
+                        }
                         var initialsSpan = logoBox.querySelector('span.is-initials');
                         if (img) {
                             img.style.display = '';
                             if (initialsSpan) initialsSpan.style.display = 'none';
-                        } else if (initialsSpan) {
-                            initialsSpan.style.display = '';
-                        } else {
-                            logoBox.insertAdjacentHTML('beforeend', '<span class="store-logo is-initials"><?= e($storeLogoMeta["initials"]) ?></span>');
                         }
                     }
                 } else if (val === 'icon') {
@@ -248,8 +249,6 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
                     if (logoBox) {
                         var img2 = logoBox.querySelector('img.store-logo');
                         if (img2) img2.style.display = 'none';
-                        var initialsSpan2 = logoBox.querySelector('span.is-initials');
-                        if (initialsSpan2) initialsSpan2.style.display = 'none';
                         var currentIcon = document.getElementById('icons_value') ? document.getElementById('icons_value').value : '';
                         var iconSpan2 = logoBox.querySelector('span.is-icon');
                         if (currentIcon !== '') {
@@ -260,8 +259,13 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
                             } else {
                                 logoBox.insertAdjacentHTML('beforeend', '<span class="store-logo is-icon"><i class="' + currentIcon + '"></i></span>');
                             }
-                        } else if (iconSpan2) {
-                            iconSpan2.style.display = '';
+                        } else {
+                            if (iconSpan2) {
+                                iconSpan2.style.display = 'none';
+                            }
+                            if (img2) {
+                                img2.style.display = '';
+                            }
                         }
                     }
                 }
@@ -282,6 +286,11 @@ $storeLogoMeta = avatar_meta($store['logo'] ?? null, $storeName !== '' ? $storeN
                         if (iEl) iEl.className = cls;
                     } else {
                         logoBox.insertAdjacentHTML('beforeend', '<span class="store-logo is-icon"><i class="' + cls + '"></i></span>');
+                    }
+                } else {
+                    var imageEl = logoBox.querySelector('img.store-logo');
+                    if (imageEl) {
+                        imageEl.style.display = '';
                     }
                 }
             });

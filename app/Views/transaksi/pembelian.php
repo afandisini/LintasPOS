@@ -13,6 +13,14 @@
 /** @var bool $canManagePo */
 /** @var int $saldoKas */
 
+$toText = static function (mixed $value, string $default = '-'): string {
+    $text = trim((string) $value);
+    return $text !== '' ? $text : $default;
+};
+$toInt = static function (mixed $value): int {
+    return (int) ((string) $value);
+};
+
 $mediaUrl = static function ($rawPath): string {
     $path = trim((string) $rawPath);
     if ($path === '') {
@@ -20,6 +28,9 @@ $mediaUrl = static function ($rawPath): string {
     }
     if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, 'data:image/')) {
         return $path;
+    }
+    if (str_starts_with($path, 'storage/')) {
+        $path = substr($path, 8);
     }
     if (str_starts_with($path, 'filemanager/')) {
         return '/media?path=' . rawurlencode($path);
@@ -101,8 +112,8 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                                             continue;
                                         } ?>
                                         <?php
-                                        $qty = max(1, (int) ((string) ($item['jumlah'] ?? '1')));
-                                        $harga = max(0, (int) ((string) ($item['beli'] ?? '0')));
+                                        $qty = max(1, $toInt($item['jumlah'] ?? 1));
+                                        $harga = max(0, $toInt($item['beli'] ?? 0));
                                         $lineTotal = $harga * $qty;
                                         ?>
                                         <tr>
@@ -110,9 +121,9 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                                                 <div class="pos-item-info">
                                                     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                                         <span class="sbadge wrn">Barang</span>
-                                                        <span class="pos-item-name"><?= e((string) ($item['nama_barang'] ?? '-')) ?></span>
+                                                        <span class="pos-item-name"><?= e($toText($item['nama_barang'] ?? '-')) ?></span>
                                                     </div>
-                                                    <span class="pos-item-disc"><i class="bi bi-tag"></i> Harga Jual: <?= e(format_currency_id((int) ((string) ($item['jual'] ?? '0')))) ?></span>
+                                                    <span class="pos-item-disc"><i class="bi bi-tag"></i> Harga Jual: <?= e(format_currency_id($toInt($item['jual'] ?? 0))) ?></span>
                                                 </div>
                                             </td>
                                             <td style="text-align:right;font-size:13px;color:var(--text-secondary);">
@@ -125,7 +136,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                                             <td style="text-align:center;">
                                                 <form method="post" action="/transaksi/pembelian/cart/update" class="pos-qty-form">
                                                     <?= raw(csrf_field()) ?>
-                                                    <input type="hidden" name="cart_id" value="<?= e((string) ($item['id'] ?? '0')) ?>">
+                                                    <input type="hidden" name="cart_id" value="<?= e((string) $toInt($item['id'] ?? 0)) ?>">
                                                     <input class="fi pos-qty-input" type="number" name="qty" min="0" value="<?= e((string) $qty) ?>" required>
                                                 </form>
                                             </td>
@@ -133,7 +144,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                                             <td>
                                                 <form method="post" action="/transaksi/pembelian/cart/remove" data-purchase-ajax data-msg="Item dihapus dari keranjang">
                                                     <?= raw(csrf_field()) ?>
-                                                    <input type="hidden" name="cart_id" value="<?= e((string) ($item['id'] ?? '0')) ?>">
+                                                    <input type="hidden" name="cart_id" value="<?= e((string) $toInt($item['id'] ?? 0)) ?>">
                                                     <button type="submit" class="pos-del-btn" title="Hapus item"><i class="bi bi-x-lg"></i></button>
                                                 </form>
                                             </td>
@@ -147,11 +158,11 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                 <div class="pos-cart-summary" id="purchaseCartSummary">
                     <div class="pos-summary-row">
                         <span>Total Qty</span>
-                        <span><?= e((string) ((int) ((string) ($summary['qty'] ?? '0')))) ?></span>
+                        <span><?= e((string) $toInt($summary['qty'] ?? 0)) ?></span>
                     </div>
                     <div class="pos-summary-row grand">
                         <span>Total Pembelian</span>
-                        <span id="purchaseGrandTotal" data-value="<?= e((string) ((int) ((string) ($summary['grand_total'] ?? '0')))) ?>"><?= e(format_currency_id((int) ((string) ($summary['grand_total'] ?? '0')))) ?></span>
+                        <span id="purchaseGrandTotal" data-value="<?= e((string) $toInt($summary['grand_total'] ?? 0)) ?>"><?= e(format_currency_id($toInt($summary['grand_total'] ?? 0))) ?></span>
                     </div>
                 </div>
             </div>
@@ -169,7 +180,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                 <div class="fg">
                     <div class="pos-kembalian-row pos-nol pos-balance-row">
                         <span>Saldo Kas Saat Ini</span>
-                        <span id="purchaseSaldoKas" data-saldo="<?= e((string) ((int) ($saldoKas ?? 0))) ?>"><?= e(format_currency_id((int) ($saldoKas ?? 0))) ?></span>
+                        <span id="purchaseSaldoKas" data-saldo="<?= e((string) $toInt($saldoKas ?? 0)) ?>"><?= e(format_currency_id($toInt($saldoKas ?? 0))) ?></span>
                     </div>
                     <div class="row">
                         <div class="col-sm-7">
@@ -182,7 +193,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                 </div>
                 <div class="pos-checkout-total">
                     <div class="pos-checkout-total-label">Total Pembelian</div>
-                    <div class="pos-checkout-total-value" id="purchaseDisplayTotal"><?= e(format_currency_id((int) ((string) ($summary['grand_total'] ?? '0')))) ?></div>
+                    <div class="pos-checkout-total-value" id="purchaseDisplayTotal"><?= e(format_currency_id($toInt($summary['grand_total'] ?? 0))) ?></div>
                 </div>
                 <form method="post" action="/transaksi/pembelian/checkout" id="formCheckoutPembelian">
                     <?= raw(csrf_field()) ?>
@@ -352,16 +363,16 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
                             continue;
                         } ?>
                         <?php
-                        $itemId = max(0, (int) ($item['id'] ?? 0));
+                        $itemId = max(0, $toInt($item['id'] ?? 0));
                         if ($itemId <= 0) {
                             continue;
                         }
                         $itemName = (string) ($item['nama_barang'] ?? '-');
                         $itemCode = (string) ($item['id_barang'] ?? '-');
-                        $itemPrice = max(0, (int) ($item['harga_beli'] ?? 0));
-                        $itemJual = max(0, (int) ($item['harga_jual'] ?? 0));
-                        $itemStock = max(0, (int) ($item['stok'] ?? 0));
-                        $itemImage = $mediaUrl($item['gambar_path'] ?? $item['gambar'] ?? '');
+                        $itemPrice = max(0, $toInt($item['harga_beli'] ?? 0));
+                        $itemJual = max(0, $toInt($item['harga_jual'] ?? 0));
+                        $itemStock = max(0, $toInt($item['stok'] ?? 0));
+                        $itemImage = $mediaUrl($item['gambar'] ?? $item['gambar_path'] ?? '');
                         ?>
                         <article class="pos-pick-card" data-pick-item data-item-id="<?= e((string) $itemId) ?>" data-pick-keywords="<?= e(strtolower(trim($itemName . ' ' . $itemCode))) ?>">
                             <label class="pos-pick-select">

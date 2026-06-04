@@ -13,12 +13,20 @@
 /** @var array<int,array<string,mixed>> $files */
 /** @var array<int,string> $modules */
 
+$toText = static function (mixed $value, string $default = '-'): string {
+    $text = trim((string) $value);
+    return $text !== '' ? $text : $default;
+};
+$toInt = static function (mixed $value): int {
+    return (int) ((string) $value);
+};
+
 $module = strtolower((string) ($module ?? ''));
 $ref = strtolower((string) ($ref ?? ''));
-$page = max(1, (int) ($page ?? 1));
-$perPage = max(1, (int) ($perPage ?? 10));
-$totalFiles = max(0, (int) ($totalFiles ?? 0));
-$totalPages = max(1, (int) ($totalPages ?? 1));
+$page = max(1, $toInt($page ?? 1));
+$perPage = max(1, $toInt($perPage ?? 10));
+$totalFiles = max(0, $toInt($totalFiles ?? 0));
+$totalPages = max(1, $toInt($totalPages ?? 1));
 $modules = is_array($modules ?? null) ? $modules : [];
 $baseFileManagerUrl = site_url('filemanager');
 $rowStart = ($page - 1) * $perPage;
@@ -185,8 +193,8 @@ if ($pagerEnd >= $totalPages - 2) {
                             <?php else: ?>
                                 <?php foreach ($files as $idx => $file): ?>
                                     <?php
-                                    $id = (int) ($file['id'] ?? 0);
-                                    $size = (int) ($file['size_bytes'] ?? 0);
+                                    $id = $toInt($file['id'] ?? 0);
+                                    $size = $toInt($file['size_bytes'] ?? 0);
                                     $sizeLabel = $size > 0 ? number_format($size / 1024, 1) . ' KB' : '-';
                                     $mimeType = strtolower((string) ($file['mime_type'] ?? ''));
                                     $extension = strtolower((string) ($file['extension'] ?? ''));
@@ -194,8 +202,8 @@ if ($pagerEnd >= $totalPages - 2) {
                                     $relativePath = ltrim((string) ($file['path'] ?? ''), '/');
                                     $isImage = str_starts_with($mimeType, 'image/')
                                         || in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
-                                    $thumbUrl = ($isImage && $relativePath !== '')
-                                        ? site_url('media?path=' . urlencode($relativePath))
+                                    $thumbUrl = ($isImage && $id > 0)
+                                        ? site_url('media/' . $id)
                                         : '';
                                     $visibilityIcon = $visibility === 'public' ? 'bi-eye' : 'bi-eye-slash';
                                     $visibilityTitle = $visibility === 'public' ? 'Public' : 'Private';
@@ -262,8 +270,8 @@ if ($pagerEnd >= $totalPages - 2) {
                     <?php else: ?>
                         <?php foreach ($files as $file): ?>
                             <?php
-                            $id = (int) ($file['id'] ?? 0);
-                            $size = (int) ($file['size_bytes'] ?? 0);
+                            $id = $toInt($file['id'] ?? 0);
+                            $size = $toInt($file['size_bytes'] ?? 0);
                             $sizeLabel = $size > 0 ? number_format($size / 1024, 1) . ' KB' : '-';
                             $mimeType = strtolower((string) ($file['mime_type'] ?? ''));
                             $extension = strtolower((string) ($file['extension'] ?? ''));
@@ -271,8 +279,8 @@ if ($pagerEnd >= $totalPages - 2) {
                             $relativePath = ltrim((string) ($file['path'] ?? ''), '/');
                             $isImage = str_starts_with($mimeType, 'image/')
                                 || in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
-                            $thumbUrl = ($isImage && $relativePath !== '')
-                                ? site_url('media?path=' . urlencode($relativePath))
+                            $thumbUrl = ($isImage && $id > 0)
+                                ? site_url('media/' . $id)
                                 : '';
                             $visibilityIcon = $visibility === 'public' ? 'bi-eye' : 'bi-eye-slash';
                             $visibilityTitle = $visibility === 'public' ? 'Public' : 'Private';

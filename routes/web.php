@@ -26,6 +26,8 @@ $router->post('/login', [AuthController::class, 'login'])->withMiddleware(Redire
 $router->get('/dashboard', [DashboardController::class, 'index'])->withMiddleware(Authenticate::class);
 $router->get('/media', [MediaController::class, 'show'])->withMiddleware(Authenticate::class);
 $router->get('/media/public', [MediaController::class, 'showPublic']);
+$router->get('/media/public/{id}', [MediaController::class, 'showPublicById']);
+$router->get('/media/{id}', [MediaController::class, 'showById'])->withMiddleware(Authenticate::class);
 $router->get('/filemanager', [FileManagerController::class, 'index'])->withMiddleware(Authenticate::class);
 $router->post('/filemanager/upload', [FileManagerController::class, 'upload'])->withMiddleware(Authenticate::class);
 $router->post('/filemanager/{id}/delete', [FileManagerController::class, 'destroy'])->withMiddleware(Authenticate::class);
