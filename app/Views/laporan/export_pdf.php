@@ -8,6 +8,29 @@
 /** @var string $filterTanggalSampai */
 /** @var string $filterMetode */
 /** @var bool $autoPrint */
+
+$toInt = static function (mixed $value): int {
+    if (is_int($value)) {
+        return $value;
+    }
+    if (is_float($value)) {
+        return (int) $value;
+    }
+    if (is_bool($value) || $value === null) {
+        return 0;
+    }
+
+    $text = trim((string) $value);
+    if ($text === '') {
+        return 0;
+    }
+    $normalized = preg_replace('/[^\d\-]/', '', $text);
+    if (!is_string($normalized) || $normalized === '' || $normalized === '-') {
+        return 0;
+    }
+
+    return (int) $normalized;
+};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -153,11 +176,11 @@ body {
     <div class="summary-grid">
         <div class="s-card">
             <div class="s-label">Total Transaksi</div>
-            <div class="s-value"><?= e(number_format((int)($summary['total_transaksi'] ?? 0), 0, ',', '.')) ?></div>
+            <div class="s-value"><?= e(number_format($toInt($summary['total_transaksi'] ?? 0), 0, ',', '.')) ?></div>
         </div>
         <div class="s-card">
             <div class="s-label">Total Qty</div>
-            <div class="s-value"><?= e(number_format((int)($summary['total_qty'] ?? 0), 0, ',', '.')) ?></div>
+            <div class="s-value"><?= e(number_format($toInt($summary['total_qty'] ?? 0), 0, ',', '.')) ?></div>
         </div>
         <div class="s-card">
         <div class="s-label">
@@ -173,25 +196,25 @@ body {
             }
             ?>
         </div>
-        <div class="s-value">Rp <?= e(number_format((int)($summary['grand_total'] ?? 0), 0, ',', '.')) ?></div>
+        <div class="s-value">Rp <?= e(number_format($toInt($summary['grand_total'] ?? 0), 0, ',', '.')) ?></div>
     </div>
         <?php if ($canViewModal && $tipe === 'penjualan'): ?>
         <div class="s-card">
             <div class="s-label">Total Modal</div>
-            <div class="s-value">Rp <?= e(number_format((int)($summary['total_modal'] ?? 0), 0, ',', '.')) ?></div>
+            <div class="s-value">Rp <?= e(number_format($toInt($summary['total_modal'] ?? 0), 0, ',', '.')) ?></div>
         </div>
         <div class="s-card">
             <div class="s-label">Laba Kotor</div>
-            <div class="s-value">Rp <?= e(number_format((int)($summary['laba'] ?? 0), 0, ',', '.')) ?></div>
+            <div class="s-value">Rp <?= e(number_format($toInt($summary['laba'] ?? 0), 0, ',', '.')) ?></div>
         </div>
         <?php elseif ($canViewModal && $tipe === 'pembelian'): ?>
         <div class="s-card">
             <div class="s-label">Total Bayar</div>
-            <div class="s-value">Rp <?= e(number_format((int)($summary['total_modal'] ?? 0), 0, ',', '.')) ?></div>
+            <div class="s-value">Rp <?= e(number_format($toInt($summary['total_modal'] ?? 0), 0, ',', '.')) ?></div>
         </div>
         <div class="s-card">
             <div class="s-label">Sisa Hutang</div>
-            <div class="s-value">Rp <?= e(number_format(max(0, (int)($summary['grand_total'] ?? 0) - (int)($summary['total_modal'] ?? 0)), 0, ',', '.')) ?></div>
+            <div class="s-value">Rp <?= e(number_format(max(0, $toInt($summary['grand_total'] ?? 0) - $toInt($summary['total_modal'] ?? 0)), 0, ',', '.')) ?></div>
         </div>
         <?php endif; ?>
     </div>
@@ -225,12 +248,12 @@ body {
                     <td><?= e((string)($row['tanggal_input'] ?? '-')) ?></td>
                     <td><?= e((string)($row['nama_pelanggan'] ?? 'Umum')) ?></td>
                     <td class="text-end"><?= e((string)($row['total_qty'] ?? 0)) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['total'] ?? 0), 0, ',', '.')) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['bayar'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['total'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['bayar'] ?? 0), 0, ',', '.')) ?></td>
                     <td><?= e((string)($row['payment_method'] ?? '-')) ?></td>
                     <td><span class="sbadge <?= $st === 'Lunas' ? 'scc' : 'wrn' ?>"><?= e($st) ?></span></td>
                     <?php if ($canViewModal): ?>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['total_modal'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['total_modal'] ?? 0), 0, ',', '.')) ?></td>
                     <?php endif; ?>
                 </tr>
                 <?php endforeach; ?>
@@ -240,8 +263,8 @@ body {
             <tfoot>
                 <tr>
                     <td colspan="4" class="text-end">Total</td>
-                    <td class="text-end"><?= e(number_format((int)($summary['total_qty'] ?? 0), 0, ',', '.')) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($summary['grand_total'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end"><?= e(number_format($toInt($summary['total_qty'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($summary['grand_total'] ?? 0), 0, ',', '.')) ?></td>
                     <td colspan="<?= $canViewModal ? 4 : 3 ?>"></td>
                 </tr>
             </tfoot>
@@ -276,13 +299,13 @@ body {
                     <td><?= e((string)($row['tanggal_input'] ?? '-')) ?></td>
                     <td><?= e((string)($row['nm_supplier'] ?? '-')) ?></td>
                     <td class="text-end"><?= e((string)($row['total_qty'] ?? 0)) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['total'] ?? 0), 0, ',', '.')) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['paid_amount'] ?? 0), 0, ',', '.')) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['remaining_amount'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['total'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['paid_amount'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['remaining_amount'] ?? 0), 0, ',', '.')) ?></td>
                     <td><?= e((string)($row['payment_method'] ?? '-')) ?></td>
                     <td><span class="sbadge <?= $st === 'paid' ? 'scc' : 'wrn' ?>"><?= e($st) ?></span></td>
                     <?php if ($canViewModal): ?>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['total_modal'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['total_modal'] ?? 0), 0, ',', '.')) ?></td>
                     <?php endif; ?>
                 </tr>
                 <?php endforeach; ?>
@@ -292,8 +315,8 @@ body {
             <tfoot>
                 <tr>
                     <td colspan="4" class="text-end">Total</td>
-                    <td class="text-end"><?= e(number_format((int)($summary['total_qty'] ?? 0), 0, ',', '.')) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($summary['grand_total'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end"><?= e(number_format($toInt($summary['total_qty'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($summary['grand_total'] ?? 0), 0, ',', '.')) ?></td>
                     <td colspan="4"></td>
                     <?php if ($canViewModal): ?><td></td><?php endif; ?>
                 </tr>
@@ -328,7 +351,7 @@ body {
                     <td><?= e((string)($row['tanggal_input'] ?? '-')) ?></td>
                     <td><?= e((string)($row['nm_supplier'] ?? '-')) ?></td>
                     <td class="text-end"><?= e((string)($row['total_qty'] ?? 0)) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['total'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['total'] ?? 0), 0, ',', '.')) ?></td>
                     <td><span class="sbadge <?= $st === 'diterima' ? 'scc' : ($st === 'ditolak' ? 'wrn' : 'wrn') ?>"><?= e($st) ?></span></td>
                     <td><?= e((string)($row['payment_method'] ?? '-')) ?></td>
                 </tr>
@@ -364,9 +387,9 @@ body {
                     <td><?= e((string)($row['debt_date'] ?? '-')) ?></td>
                     <td><?= e((string)($row['nama_supplier'] ?? '-')) ?></td>
                     <td><?= e((string)($row['no_trx'] ?? '-')) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['total_amount'] ?? 0), 0, ',', '.')) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['paid_amount'] ?? 0), 0, ',', '.')) ?></td>
-                    <td class="text-end">Rp <?= e(number_format((int)($row['remaining_amount'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['total_amount'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['paid_amount'] ?? 0), 0, ',', '.')) ?></td>
+                    <td class="text-end">Rp <?= e(number_format($toInt($row['remaining_amount'] ?? 0), 0, ',', '.')) ?></td>
                     <td><?= e((string)($row['due_date'] ?? '-')) ?></td>
                     <td><span class="sbadge <?= $st === 'paid' ? 'scc' : ($st === 'partial' ? 'wrn' : 'dng') ?>"><?= e($st) ?></span></td>
                 </tr>
