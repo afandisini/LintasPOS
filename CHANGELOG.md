@@ -1,6 +1,7 @@
 # AitiCore Flex Changelog
 
-## Unreleased
+## v0.4.0 - 2026-06-04
+
 - Fixed hosting compatibility for uploaded assets and profile/store images on Apache/phpMyAdmin deployments.
 - Added media fallback handling so legacy `storage/filemanager/...` URLs and numeric file IDs still resolve after upload.
 - Hardened avatar/store logo upload validation for hosting environments without `fileinfo`, with safer MIME detection fallback.
@@ -14,6 +15,7 @@
 - Updated the task baseline to reflect the remaining edge cases: returns, reversals, partial PO receipt, overdue debt aging, and audit trail follow-up.
 
 ## v0.3.0 - 2026-04-01
+
 - Added upgrade orchestration scaffolding with `php aiti upgrade:check` (read-only) and `php aiti upgrade:apply` (dry-run default).
 - Added versioned upgrade catalog and guide structure under `upgrade-guides/`.
 - Added strict framework governance rules in `AGENT.md` for SemVer, ownership boundaries, backups, and safe patching.
@@ -25,12 +27,14 @@
 - Added development-only runtime error popup injection in `public/index.php` while keeping production responses generic.
 
 ## v0.2.0 - 2026-04-01
+
 - Added built-in `router.php` so `php aiti serve` always routes dynamic requests consistently and lets static files bypass the app.
 - Added custom 404 view handling with fallback to plain text when no error view exists.
 - Added automatic `HEAD` to `GET` route matching while keeping `HEAD` responses bodyless.
 - Added `php aiti migrate update|drop` SQL migration runner backed by PDO and `database/update` / `database/drop`.
 
 ## v0.1.0 - 2026-02-20
+
 - Initial framework skeleton with CI-ish app structure.
 - Added bootstrap lifecycle (`public/index.php` -> kernel -> response).
 - Added `.env` loader and config reader.
