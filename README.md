@@ -2,7 +2,7 @@
 
 **LintasPOS - Sistem Point of Sale berbasis AitiCore Flex**
 
-![LintasPOS Preview]([https://aiti-solutions.com/storage/filemanager/1/39/image_login-494ed577d8f68693bedb05935b4498fe.webp](https://aiti-solutions.com/filemanager/3/38/lintaspos_09-a899e864260873243075765dbea47672.webp?w=960&amp;h=600&amp;fit=cover&amp;q=82&amp;fm=webp&amp;v=1776599226))
+![LintasPOS Preview](https://aiti-solutions.com/filemanager/3/38/lintaspos_09-a899e864260873243075765dbea47672.webp?w=960&amp;h=600&amp;fit=cover&amp;q=82&amp;fm=webp&amp;v=1776599226)
 
 LintasPOS adalah aplikasi POS (Point of Sale) fullstack yang dibangun di atas AitiCore Flex - framework PHP ringan dengan baseline keamanan modern: escape output default, CSRF middleware, dan session hardening.
 
