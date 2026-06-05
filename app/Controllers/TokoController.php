@@ -19,7 +19,7 @@ class TokoController
         try {
             $pdo = Database::connection();
             $hasIconsColumn = $this->hasTokoIconsColumn($pdo);
-            $select = 'SELECT id, nama_toko, alamat_toko, tlp, nama_pemilik, logo';
+            $select = 'SELECT id, app_name, nama_toko, alamat_toko, tlp, nama_pemilik, logo';
             if ($hasIconsColumn) {
                 $select .= ', icons';
             }
@@ -41,6 +41,7 @@ class TokoController
             $fallback = store_profile();
             $store = [
                 'id' => 1,
+                'app_name' => (string) ($fallback['app_name'] ?? brand_name()),
                 'nama_toko' => (string) ($fallback['nama_toko'] ?? ''),
                 'alamat_toko' => (string) ($fallback['alamat_toko'] ?? ''),
                 'tlp' => (string) ($fallback['tlp'] ?? ''),
@@ -64,8 +65,7 @@ class TokoController
     public function update(Request $request): Response
     {
         $storeId = (int) $request->input('id', '0');
-        $requestedBrandName = trim((string) $request->input('nama_toko', ''));
-        $namaToko = enforce_brand_name($requestedBrandName);
+        $namaToko = trim((string) $request->input('nama_toko', ''));
         $alamatToko = trim((string) $request->input('alamat_toko', ''));
         $telepon = trim((string) $request->input('tlp', ''));
         $namaPemilik = trim((string) $request->input('nama_pemilik', ''));
@@ -77,17 +77,13 @@ class TokoController
         $auth = is_array($_SESSION['auth'] ?? null) ? $_SESSION['auth'] : [];
         $authId = (int) ($auth['id'] ?? 0);
 
-        if ($requestedBrandName !== '' && strcasecmp($requestedBrandName, brand_name()) !== 0) {
-            toast_add('Nama brand dikunci dan tidak dapat diubah.', 'warning');
-        }
-
         if ($storeId <= 0) {
             toast_add('Data toko tidak valid.', 'error');
             return Response::redirect('/toko');
         }
 
-        if ($alamatToko === '' || $telepon === '' || $namaPemilik === '') {
-            toast_add('Alamat, telepon, dan nama pemilik wajib diisi.', 'error');
+        if ($namaToko === '' || $alamatToko === '' || $telepon === '' || $namaPemilik === '') {
+            toast_add('Nama toko, alamat, telepon, dan nama pemilik wajib diisi.', 'error');
             return Response::redirect('/toko');
         }
 
@@ -127,12 +123,14 @@ class TokoController
 
             $params = [
                 'id' => $storeId,
+                'app_name' => brand_name(),
                 'nama_toko' => $namaToko,
                 'alamat_toko' => $alamatToko,
                 'tlp' => $telepon,
                 'nama_pemilik' => $namaPemilik,
             ];
             $setParts = [
+                'app_name = :app_name',
                 'nama_toko = :nama_toko',
                 'alamat_toko = :alamat_toko',
                 'tlp = :tlp',
@@ -231,10 +229,11 @@ class TokoController
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute($params);
             } else {
-                $insertCols = 'id, nama_toko, alamat_toko, tlp, nama_pemilik, logo';
-                $insertVals = ':id, :nama_toko, :alamat_toko, :tlp, :nama_pemilik, :logo';
+                $insertCols = 'id, app_name, nama_toko, alamat_toko, tlp, nama_pemilik, logo';
+                $insertVals = ':id, :app_name, :nama_toko, :alamat_toko, :tlp, :nama_pemilik, :logo';
                 $insertParams = [
                     'id' => $storeId,
+                    'app_name' => brand_name(),
                     'nama_toko' => $namaToko,
                     'alamat_toko' => $alamatToko,
                     'tlp' => $telepon,

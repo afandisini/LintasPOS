@@ -1,5 +1,15 @@
 # AitiCore Flex Changelog
 
+## v0.4.5 - 2026-06-05
+
+- Split store identity into `app_name` for the application brand and `nama_toko` for the editable store name.
+- Added `app_name` migration support so fresh installs and existing databases stay aligned.
+- Updated the toko settings page so the application brand stays locked while the store name remains editable by the user.
+- Standardized dashboard and security charts so labels, tooltip formatting, and theme styling stay consistent.
+- Fixed dashboard month labels and tooltip output so revenue points render as `Maret Rp 810K` instead of raw indexes or dataset labels.
+- Hardened branding placeholders so login, sidebar, and footer now render the application brand separately from the store name.
+- Kept the telemetry planning notes local and out of the repository publish scope.
+
 ## v0.4.0 - 2026-06-04
 
 - Fixed hosting compatibility for uploaded assets and profile/store images on Apache/phpMyAdmin deployments.

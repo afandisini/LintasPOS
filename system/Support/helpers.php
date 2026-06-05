@@ -352,7 +352,8 @@ if (!function_exists('store_profile')) {
         }
 
         $fallback = [
-            'nama_toko' => enforce_brand_name(),
+            'app_name' => brand_name(),
+            'nama_toko' => brand_name(),
             'alamat_toko' => '',
             'tlp' => '',
             'nama_pemilik' => '',
@@ -371,16 +372,16 @@ if (!function_exists('store_profile')) {
             $row = null;
             try {
                 $row = $pdo->query(
-                    'SELECT nama_toko, alamat_toko, tlp, nama_pemilik, logo, icons, logo_mode FROM toko ORDER BY id ASC LIMIT 1'
+                    'SELECT app_name, nama_toko, alamat_toko, tlp, nama_pemilik, logo, icons, logo_mode FROM toko ORDER BY id ASC LIMIT 1'
                 )->fetch();
             } catch (\Throwable) {
                 try {
                     $row = $pdo->query(
-                        'SELECT nama_toko, alamat_toko, tlp, nama_pemilik, logo, icons FROM toko ORDER BY id ASC LIMIT 1'
+                        'SELECT app_name, nama_toko, alamat_toko, tlp, nama_pemilik, logo, icons FROM toko ORDER BY id ASC LIMIT 1'
                     )->fetch();
                 } catch (\Throwable) {
                     $row = $pdo->query(
-                        'SELECT nama_toko, alamat_toko, tlp, nama_pemilik, logo FROM toko ORDER BY id ASC LIMIT 1'
+                        'SELECT app_name, nama_toko, alamat_toko, tlp, nama_pemilik, logo FROM toko ORDER BY id ASC LIMIT 1'
                     )->fetch();
                 }
             }
@@ -391,7 +392,10 @@ if (!function_exists('store_profile')) {
             }
 
             $cached = [
-                'nama_toko' => enforce_brand_name((string) ($row['nama_toko'] ?? '')),
+                'app_name' => enforce_brand_name((string) ($row['app_name'] ?? '')),
+                'nama_toko' => trim((string) ($row['nama_toko'] ?? '')) !== ''
+                    ? (string) $row['nama_toko']
+                    : brand_name(),
                 'alamat_toko' => (string) ($row['alamat_toko'] ?? ''),
                 'tlp' => (string) ($row['tlp'] ?? ''),
                 'nama_pemilik' => (string) ($row['nama_pemilik'] ?? ''),
@@ -440,7 +444,8 @@ if (!function_exists('store_placeholders')) {
     function store_placeholders(string $content): string
     {
         $replace = [
-            '{{nama_toko}}' => brand_name(),
+            '{{app_name}}' => toko('app_name', brand_name()),
+            '{{nama_toko}}' => toko('nama_toko', brand_name()),
             '{{alamat}}' => toko('alamat_toko', ''),
             '{{alamat_toko}}' => toko('alamat_toko', ''),
             '{{telepon}}' => toko('tlp', ''),

@@ -28,6 +28,7 @@ class View
 
         if (function_exists('store_profile')) {
             $store = (array) store_profile();
+            $variables['app_name'] = Escaper::wrap((string) ($store['app_name'] ?? ''));
             $variables['nama_toko'] = Escaper::wrap((string) ($store['nama_toko'] ?? ''));
             $variables['alamat_toko'] = Escaper::wrap((string) ($store['alamat_toko'] ?? ''));
             $variables['alamat'] = Escaper::wrap((string) ($store['alamat_toko'] ?? ''));

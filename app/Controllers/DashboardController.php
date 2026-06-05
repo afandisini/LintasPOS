@@ -63,6 +63,34 @@ class DashboardController
                 $chartValues[] = $dbMap[$p] ?? 0;
             }
 
+            $chartLabels = array_values(array_map(static function (mixed $label): string {
+                if (is_string($label) || is_int($label) || is_float($label)) {
+                    return trim((string) $label);
+                }
+
+                if (is_object($label)) {
+                    foreach (['label', 'name', 'text', 'month', 'periode'] as $key) {
+                        if (isset($label->{$key}) && is_scalar($label->{$key})) {
+                            $text = trim((string) $label->{$key});
+                            if ($text !== '') {
+                                return $text;
+                            }
+                        }
+                    }
+                }
+
+                return '';
+            }, $chartLabels));
+            $chartValues = array_values(array_map(static function (mixed $value): int {
+                if (is_int($value)) {
+                    return $value;
+                }
+                if (is_float($value)) {
+                    return (int) $value;
+                }
+                return (int) ((string) $value);
+            }, $chartValues));
+
             $recentSalesStmt = $pdo->query(
                 "SELECT p.no_trx, p.tanggal_input, p.total, p.status_bayar, p.payment_method, COALESCE(pl.nama_pelanggan, 'Pelanggan Umum') AS pelanggan "
                 . "FROM penjualan p "
@@ -90,8 +118,8 @@ class DashboardController
             'auth' => $auth,
             'activeMenu' => 'dashboard',
             'stats' => $stats,
-            'chart_labels_json' => json_encode($chartLabels, JSON_UNESCAPED_UNICODE),
-            'chart_values_json' => json_encode($chartValues, JSON_UNESCAPED_UNICODE),
+            'chart_labels' => $chartLabels,
+            'chart_values' => $chartValues,
             'recent_sales' => $recentSales,
             'low_stocks' => $lowStocks,
         ]);

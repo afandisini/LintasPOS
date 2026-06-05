@@ -358,19 +358,73 @@ $extraHead = raw(
             var labels = raw.map(function(r){ return r.hour; });
             var totals = raw.map(function(r){ return parseInt(r.total, 10); });
             var highs  = raw.map(function(r){ return parseInt(r.high_count, 10); });
+            function secChartColors(theme) {
+                var dark = theme === 'dark';
+                return {
+                    totalFill: dark ? 'rgba(99,102,241,0.28)' : 'rgba(99,102,241,0.18)',
+                    totalBorder: '#6366f1',
+                    highFill: dark ? 'rgba(239,68,68,0.28)' : 'rgba(239,68,68,0.18)',
+                    highBorder: '#ef4444',
+                    grid: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                    text: dark ? '#a8a29e' : '#78716c'
+                };
+            }
+            function formatCount(value) {
+                var n = Number(value);
+                return Number.isFinite(n) ? n.toLocaleString('id-ID') : '0';
+            }
+            var theme = document.documentElement.getAttribute('data-theme') || 'light';
+            var c = secChartColors(theme);
             new Chart(canvas, {
                 type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [
-                        { label:'Total Events',  data:totals, backgroundColor:'rgba(99,102,241,0.5)', borderColor:'rgba(99,102,241,1)', borderWidth:1 },
-                        { label:'High/Critical', data:highs,  backgroundColor:'rgba(239,68,68,0.5)',  borderColor:'rgba(239,68,68,1)',  borderWidth:1 }
+                        { label:'Total Events',  data:totals, backgroundColor:c.totalFill, borderColor:c.totalBorder, borderWidth:1, borderRadius:8, maxBarThickness:18 },
+                        { label:'High/Critical', data:highs,  backgroundColor:c.highFill,  borderColor:c.highBorder,  borderWidth:1, borderRadius:8, maxBarThickness:18 }
                     ]
                 },
                 options: {
-                    responsive:true, maintainAspectRatio:false,
-                    plugins:{ legend:{ position:'top' } },
-                    scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } }
+                    responsive:true,
+                    maintainAspectRatio:false,
+                    interaction:{ mode:'index', intersect:false },
+                    plugins:{
+                        legend:{
+                            position:'top',
+                            labels:{
+                                color:c.text,
+                                usePointStyle:true,
+                                pointStyle:'rectRounded'
+                            }
+                        },
+                        tooltip:{
+                            callbacks:{
+                                title:function(items){
+                                    return items && items.length ? items[0].label : '';
+                                },
+                                label:function(context){
+                                    var label = context.dataset && context.dataset.label ? context.dataset.label : '';
+                                    var value = context && context.parsed ? context.parsed.y : 0;
+                                    return label + ': ' + formatCount(value);
+                                }
+                            }
+                        }
+                    },
+                    scales:{
+                        x:{
+                            ticks:{ color:c.text },
+                            grid:{ color:c.grid }
+                        },
+                        y:{
+                            beginAtZero:true,
+                            ticks:{
+                                color:c.text,
+                                stepSize:1,
+                                callback:function(v){ return formatCount(v); }
+                            },
+                            grid:{ color:c.grid }
+                        }
+                    }
                 }
             });
         }

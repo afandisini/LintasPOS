@@ -7,6 +7,7 @@
 /** @var array<string,mixed> $store */
 
 $storeId = (int) ($store['id'] ?? 0);
+$appName = (string) ($store['app_name'] ?? brand_name());
 $storeName = (string) ($store['nama_toko'] ?? '');
 $storeAddress = (string) ($store['alamat_toko'] ?? '');
 $storePhone = (string) ($store['tlp'] ?? '');
@@ -48,11 +49,11 @@ $storeLogoUrl = store_logo_url($store['logo'] ?? null);
                         <?= raw(csrf_field()) ?>
                         <input type="hidden" name="id" value="<?= e((string) ($storeId > 0 ? $storeId : 1)) ?>">
                         <input type="hidden" name="logo_mode" id="logo_mode_input" value="<?= e($storeLogoMode) ?>">
-
+                        <input type="hidden" value="<?= e($appName) ?>">
                         <div class="fg">
-                            <label class="fl" for="nama_toko">Nama Brand</label>
-                            <input class="fi" id="nama_toko" type="text" name="nama_toko" maxlength="255" readonly value="<?= e(brand_name()) ?>">
-                            <div class="u-help">Hard Branding aktif: nama brand dikunci di sistem.</div>
+                            <label class="fl" for="nama_toko">Nama Toko</label>
+                            <input class="fi" id="nama_toko" type="text" name="nama_toko" maxlength="255" required placeholder="Nama toko" value="<?= e($storeName) ?>">
+                            <div class="u-help">Nama toko dapat diubah sesuai pengguna yang memakai aplikasi.</div>
                         </div>
 
                         <div class="fg">
@@ -156,8 +157,8 @@ $storeLogoUrl = store_logo_url($store['logo'] ?? null);
                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <select class="u-input w-50" id="logo_type_select">
                                     <option value="">Pilih Gambar/Icon</option>
-                                    <option value="gambar"<?= $storeLogoMode === 'gambar' ? ' selected' : '' ?>>Gambar</option>
-                                    <option value="icon"<?= $storeLogoMode === 'icon' ? ' selected' : '' ?>>Icon</option>
+                                    <option value="gambar" <?= $storeLogoMode === 'gambar' ? ' selected' : '' ?>>Gambar</option>
+                                    <option value="icon" <?= $storeLogoMode === 'icon' ? ' selected' : '' ?>>Icon</option>
                                 </select>
                                 <button class="btn-g btn-sm" id="logo_type_apply_btn">Terapkan</button>
                             </div>
@@ -294,7 +295,10 @@ $storeLogoUrl = store_logo_url($store['logo'] ?? null);
                     }
                 }
             });
-            observer.observe(iconsHidden, { attributes: true, attributeFilter: ['value'] });
+            observer.observe(iconsHidden, {
+                attributes: true,
+                attributeFilter: ['value']
+            });
             // Also listen via input event fallback
             iconsHidden.addEventListener('change', function() {
                 iconsHidden.dispatchEvent(new Event('input'));

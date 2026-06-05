@@ -5,8 +5,8 @@
 /** @var array<string,mixed> $auth */
 /** @var string $activeMenu */
 /** @var array<string,int> $stats */
-/** @var string $chart_labels_json */
-/** @var string $chart_values_json */
+/** @var array<int,string> $chart_labels */
+/** @var array<int,int> $chart_values */
 /** @var array<int,array<string,mixed>> $recent_sales */
 /** @var array<int,array<string,mixed>> $low_stocks */
 
@@ -171,8 +171,8 @@ $toInt = static function (mixed $value): int {
 
 <script src="<?= e(base_url('assets/vendor/chartjs/chart.umd.min.js')) ?>"></script>
 <script>
-    window.dashboardChartLabels = <?= raw((string) ($chart_labels_json ?? '[]')) ?>;
-    window.dashboardChartValues = <?= raw((string) ($chart_values_json ?? '[]')) ?>;
+    window.dashboardChartLabels = <?= raw(json_encode($chart_labels ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>;
+    window.dashboardChartValues = <?= raw(json_encode($chart_values ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>;
 </script>
 <?= raw(helper_toast_script()) ?>
 <?= raw(module_script('Dashboard/js/dashboard.js')) ?>

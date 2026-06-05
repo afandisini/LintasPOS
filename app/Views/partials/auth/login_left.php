@@ -5,7 +5,7 @@
     <div class="d-flex align-items-center justify-content-between">
         <div class="brand">
             <div class="icon">{{brand_logo}}</div>
-            <div class="title">{{nama_toko}}</div>
+            <div class="title">{{app_name}}</div>
         </div>
         <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle theme">
             <i class="bi bi-sun-fill"></i>
@@ -14,12 +14,12 @@
 
     <div class="hero">
         <div class="chip mb-3"><i class="bi bi-shield-lock-fill"></i> Secure Login</div>
-        <h1>Masuk ke sistem {{nama_toko}}.</h1>
+        <h1>Masuk ke sistem {{app_name}}.</h1>
         <p>
             Akses dashboard untuk memantau transaksi, pelanggan, stok barang, dan performa bisnis
             secara real-time dengan autentikasi sesi yang aman.
         </p>
     </div>
 
-    <div class="small text-secondary">&copy; <?= e(date('Y')) ?> {{nama_toko}} - {{alamat}}</div>
+    <div class="small text-secondary">&copy; <?= e(date('Y')) ?> {{app_name}} - {{alamat}}</div>
 </section>

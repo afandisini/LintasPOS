@@ -52,7 +52,7 @@ foreach ($generatedMenus as $menu) {
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
         <div class="brand-icon">{{brand_logo}}</div>
-        <span class="brand-text">{{nama_toko}}</span>
+        <span class="brand-text">{{app_name}}</span>
     </div>
 
     <nav class="sidebar-nav">
@@ -125,7 +125,7 @@ foreach ($generatedMenus as $menu) {
     </nav>
 
     <div class="sidebar-footer">
-        <div class="sf-store">&copy; <?= date('Y') ?>. {{nama_toko}}</div>
+        <div class="sf-store">&copy; <?= date('Y') ?>. {{app_name}}</div>
         <div class="sf-meta"><span class="fw-light">Powered by</span> <span class="fw-bold"><?= e(framework_credit()) ?></span></div>
     </div>
 </aside>
