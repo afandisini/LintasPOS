@@ -425,14 +425,14 @@ if (!function_exists('store_brand_logo_html')) {
 
         $logoUrl = store_logo_url($logoId);
         if ($mode === 'gambar') {
-            return '<img src="' . Escaper::escape($logoUrl) . '" alt="' . Escaper::escape($storeName) . '" style="height:32px;width:auto;object-fit:contain;">';
+            return '<img src="' . Escaper::escape($logoUrl) . '" alt="' . Escaper::escape($storeName) . '" width="32" height="32" loading="eager" decoding="async" fetchpriority="high" style="height:32px;width:auto;object-fit:contain;">';
         }
 
         if ($icons !== '') {
             return '<i class="' . Escaper::escape($icons) . '"></i>';
         }
 
-        return '<img src="' . Escaper::escape($logoUrl) . '" alt="' . Escaper::escape($storeName) . '" style="height:32px;width:32px;object-fit:contain;">';
+        return '<img src="' . Escaper::escape($logoUrl) . '" alt="' . Escaper::escape($storeName) . '" width="32" height="32" loading="eager" decoding="async" fetchpriority="high" style="height:32px;width:32px;object-fit:contain;">';
     }
 }
 

@@ -14,7 +14,7 @@ class MediaController
     public function show(Request $request): Response
     {
         $rawPath = (string) $request->input('path', '');
-        return $this->serveFile($rawPath, false);
+        return $this->serveFile($request, $rawPath, false);
     }
 
     public function showById(Request $request, string $id): Response
@@ -24,7 +24,7 @@ class MediaController
             return Response::html('Not Found', 404);
         }
 
-        return $this->serveRelativePath($relative, false);
+        return $this->serveRelativePath($request, $relative, false);
     }
 
     public function showPublic(Request $request): Response
@@ -34,7 +34,7 @@ class MediaController
         if (!str_starts_with($relative, 'filemanager/toko/')) {
             return Response::html('Forbidden', 403);
         }
-        return $this->serveRelativePath($relative, true);
+        return $this->serveRelativePath($request, $relative, true);
     }
 
     public function showPublicById(Request $request, string $id): Response
@@ -44,20 +44,20 @@ class MediaController
             return Response::html('Forbidden', 403);
         }
 
-        return $this->serveRelativePath($relative, true);
+        return $this->serveRelativePath($request, $relative, true);
     }
 
-    private function serveFile(string $rawPath, bool $skipAuth): Response
+    private function serveFile(Request $request, string $rawPath, bool $skipAuth): Response
     {
         $relative = $this->normalizeRelativePath($rawPath);
         if ($relative === '' || str_contains($relative, '..') || !str_starts_with($relative, 'filemanager/')) {
             return Response::html('Not Found', 404);
         }
 
-        return $this->serveRelativePath($relative, $skipAuth);
+        return $this->serveRelativePath($request, $relative, $skipAuth);
     }
 
-    private function serveRelativePath(string $relative, bool $skipAuth): Response
+    private function serveRelativePath(Request $request, string $relative, bool $skipAuth): Response
     {
         $relative = $this->normalizeRelativePath($relative);
         if ($relative === '' || str_contains($relative, '..') || !str_starts_with($relative, 'filemanager/')) {
@@ -99,12 +99,34 @@ class MediaController
         }
 
         $size = filesize($fullPathReal);
+        $mtime = filemtime($fullPathReal);
+        $etag = 'W/"' . sha1($fullPathReal . '|' . ($size !== false ? (string) $size : '0') . '|' . ($mtime !== false ? (string) $mtime : '0')) . '"';
+        $cacheControl = $skipAuth
+            ? 'public, max-age=31536000, immutable'
+            : 'private, max-age=31536000, immutable';
         $headers = [
             'Content-Type' => $mime,
-            'Cache-Control' => 'private, max-age=86400',
+            'Cache-Control' => $cacheControl,
+            'ETag' => $etag,
         ];
         if ($size !== false) {
             $headers['Content-Length'] = (string) $size;
+        }
+        if ($mtime !== false) {
+            $headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $mtime) . ' GMT';
+        }
+
+        $ifNoneMatch = trim((string) $request->header('If-None-Match', ''));
+        if ($ifNoneMatch !== '' && $ifNoneMatch === $etag) {
+            return new Response('', 304, $headers);
+        }
+
+        $ifModifiedSince = trim((string) $request->header('If-Modified-Since', ''));
+        if ($ifModifiedSince !== '' && $mtime !== false) {
+            $requestTime = strtotime($ifModifiedSince);
+            if ($requestTime !== false && $requestTime >= $mtime) {
+                return new Response('', 304, $headers);
+            }
         }
 
         return new Response($content, 200, $headers);

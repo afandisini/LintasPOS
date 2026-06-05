@@ -20,7 +20,7 @@ $avatar = avatar_meta($avatarSource, (string) ($auth['name'] ?? 'User'));
     </div>
 
     <div class="t-right">
-        <button class="n-btn theme-btn" onclick="toggleTheme()" aria-label="Toggle theme" id="themeBtn">
+        <button class="n-btn theme-btn" onclick="toggleTheme(event)" aria-label="Toggle theme" id="themeBtn">
             <i class="bi bi-moon-fill"></i>
         </button>
 
@@ -30,6 +30,11 @@ $avatar = avatar_meta($avatarSource, (string) ($auth['name'] ?? 'User'));
                     <img
                         class="nav-pro-avatar"
                         src="<?= e($avatar['url']) ?>"
+                        width="30"
+                        height="30"
+                        loading="eager"
+                        decoding="async"
+                        fetchpriority="high"
                         alt="<?= e((string) ($auth['name'] ?? 'User')) ?>"
                         onerror="this.style.display='none';var fb=this.nextElementSibling;if(fb){fb.style.display='inline-flex';}">
                     <span class="nav-pro-avatar is-initials" style="display:none" aria-hidden="true"><?= e($avatar['initials']) ?></span>

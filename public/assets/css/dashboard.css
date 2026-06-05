@@ -84,6 +84,10 @@ body {
   border-radius: 3px;
 }
 
+.border {
+  border: 1px solid var(--border-color) !important;
+}
+
 .sidebar {
   position: fixed;
   top: 0;
@@ -1311,7 +1315,9 @@ select.fi {
   justify-content: space-between;
   gap: 6px;
   outline: none;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
   white-space: nowrap;
   overflow: hidden;
 }
@@ -1347,7 +1353,7 @@ select.fi {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
   display: none;
   flex-direction: column;
   overflow: hidden;
@@ -1438,7 +1444,7 @@ select.fi {
 }
 
 [data-theme="dark"] .cs-panel {
-  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 /* ── End Custom Select ────────────────────────────────────────── */
 
@@ -3571,9 +3577,18 @@ select.fi {
   margin-top: 1px;
 }
 
-.gs-item-icon.gs-icon-jasa     { background: var(--info-light);    color: var(--info); }
-.gs-item-icon.gs-icon-pelanggan{ background: var(--success-light);  color: var(--success); }
-.gs-item-icon.gs-icon-supplier { background: var(--danger-light);   color: var(--danger); }
+.gs-item-icon.gs-icon-jasa {
+  background: var(--info-light);
+  color: var(--info);
+}
+.gs-item-icon.gs-icon-pelanggan {
+  background: var(--success-light);
+  color: var(--success);
+}
+.gs-item-icon.gs-icon-supplier {
+  background: var(--danger-light);
+  color: var(--danger);
+}
 
 .gs-item-body {
   min-width: 0;

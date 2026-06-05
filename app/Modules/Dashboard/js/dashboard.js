@@ -1,9 +1,83 @@
 (function () {
     var html = document.documentElement;
     var key = 'pos_theme';
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     function getTheme() {
         return localStorage.getItem(key) || 'light';
+    }
+
+    function themeBackground(theme) {
+        return theme === 'dark' ? 'rgba(12, 10, 9, 0.10)' : 'rgba(250, 250, 249, 0.10)';
+    }
+
+    function getToggleOrigin(event) {
+        var target = event && event.currentTarget && event.currentTarget.getBoundingClientRect ? event.currentTarget : document.getElementById('themeBtn');
+        if (!target || !target.getBoundingClientRect) {
+            return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        }
+
+        var rect = target.getBoundingClientRect();
+        return {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+        };
+    }
+
+    function revealTheme(theme, event, done) {
+        if (reduceMotion) {
+            done();
+            return;
+        }
+
+        var origin = getToggleOrigin(event);
+        var maxX = Math.max(origin.x, window.innerWidth - origin.x);
+        var maxY = Math.max(origin.y, window.innerHeight - origin.y);
+        var radius = Math.hypot(maxX, maxY);
+        var overlay = document.createElement('div');
+
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.zIndex = '9999';
+        overlay.style.pointerEvents = 'none';
+        overlay.style.background = themeBackground(theme);
+        overlay.style.backdropFilter = 'blur(14px)';
+        overlay.style.webkitBackdropFilter = 'blur(14px)';
+        overlay.style.opacity = '1';
+        overlay.style.webkitClipPath = 'circle(0px at ' + origin.x + 'px ' + origin.y + 'px)';
+        overlay.style.clipPath = 'circle(0px at ' + origin.x + 'px ' + origin.y + 'px)';
+        overlay.style.transition = 'clip-path 560ms cubic-bezier(0.22, 1, 0.36, 1), -webkit-clip-path 560ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease-out';
+        overlay.style.willChange = 'clip-path';
+
+        document.body.appendChild(overlay);
+
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                overlay.style.webkitClipPath = 'circle(' + radius + 'px at ' + origin.x + 'px ' + origin.y + 'px)';
+                overlay.style.clipPath = 'circle(' + radius + 'px at ' + origin.x + 'px ' + origin.y + 'px)';
+            });
+        });
+
+        var finished = false;
+        var finish = function () {
+            if (finished) return;
+            finished = true;
+            overlay.removeEventListener('transitionend', onTransitionEnd);
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+            done();
+        };
+
+        var onTransitionEnd = function (e) {
+            if (e && e.target === overlay && e.propertyName === 'clip-path') {
+                finish();
+            }
+        };
+
+        overlay.addEventListener('transitionend', onTransitionEnd);
+        window.setTimeout(finish, 700);
     }
 
     function applyTheme(theme) {
@@ -18,9 +92,11 @@
         updateChartColors(theme);
     }
 
-    window.toggleTheme = function toggleTheme() {
+    window.toggleTheme = function toggleTheme(event) {
         var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        applyTheme(next);
+        revealTheme(next, event, function () {
+            applyTheme(next);
+        });
     };
 
     window.toggleSidebar = function toggleSidebar() {
