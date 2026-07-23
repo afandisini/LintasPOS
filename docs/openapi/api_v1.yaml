@@ -55,6 +55,56 @@ paths:
       responses:
         '200': {description: User aktif}
         '401': {description: Token tidak valid}
+  /kategori:
+    get:
+      tags: [Master Data]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: per_page, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: search, in: query, schema: {type: string}}
+        - {name: sort, in: query, schema: {type: string, enum: [id, nama, tgl_input, created_at, updated_at]}}
+        - {name: direction, in: query, schema: {type: string, enum: [asc, desc]}}
+      responses:
+        '200': {description: Daftar kategori}
+        '401': {description: Token tidak valid}
+    post:
+      tags: [Master Data]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/KategoriInput'}
+      responses:
+        '201': {description: Kategori dibuat}
+        '422': {description: Validasi gagal}
+  /kategori/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer}}
+    get:
+      tags: [Master Data]
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {description: Detail kategori}
+        '404': {description: Kategori tidak ditemukan}
+    put:
+      tags: [Master Data]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/KategoriInput'}
+      responses:
+        '200': {description: Kategori diperbarui}
+        '422': {description: Validasi gagal}
+    delete:
+      tags: [Master Data]
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {description: Kategori dihapus}
+        '404': {description: Kategori tidak ditemukan}
 components:
   securitySchemes:
     bearerAuth:
@@ -73,3 +123,10 @@ components:
           properties:
             request_id: {type: string}
             timestamp: {type: string, format: date-time}
+    KategoriInput:
+      type: object
+      required: [nama]
+      properties:
+        nama: {type: string, maxLength: 255}
+        ket: {type: string}
+        tgl_input: {type: string, format: date}

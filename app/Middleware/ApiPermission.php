@@ -13,7 +13,7 @@ final class ApiPermission
     public function handle(Request $request, callable $next): mixed
     {
         $user = $request->attribute('api_user');
-        $permission = $this->permissionFor($request->path());
+        $permission = $this->permissionFor($request->path(), $request->method());
         if ($permission === null || !is_array($user)) {
             return $next($request);
         }
@@ -22,22 +22,41 @@ final class ApiPermission
             return $next($request);
         }
 
-        $stmt = Database::connection()->prepare(
-            'SELECT can_access FROM user_fitur_akses WHERE user_id = :user_id AND fitur_key = :feature LIMIT 1'
-        );
-        $stmt->execute(['user_id' => (int) ($user['user_id'] ?? 0), 'feature' => $permission]);
-        if ((int) $stmt->fetchColumn() !== 1) {
+        try {
+            $stmt = Database::connection()->prepare(
+                'SELECT can_access FROM user_fitur_akses WHERE user_id = :user_id AND fitur_key = :feature LIMIT 1'
+            );
+            $stmt->execute(['user_id' => (int) ($user['user_id'] ?? 0), 'feature' => $permission]);
+            $allowed = (int) $stmt->fetchColumn() === 1;
+        } catch (\Throwable) {
+            // Older installations do not yet have granular permission tables.
+            $role = strtolower((string) ($user['role'] ?? ''));
+            $allowed = str_ends_with($permission, '.view')
+                ? in_array($role, ['administrator', 'admin', 'owner', 'spv', 'kasir', 'gudang'], true)
+                : in_array($role, ['administrator', 'admin', 'owner'], true);
+        }
+        if (!$allowed) {
             return ApiResponse::error('FORBIDDEN', 'Anda tidak memiliki izin untuk resource ini.', 403);
         }
 
         return $next($request);
     }
 
-    private function permissionFor(string $path): ?string
+    private function permissionFor(string $path, string $method): ?string
     {
-        return match (true) {
-            str_ends_with($path, '/auth/me'), str_ends_with($path, '/auth/logout'), str_ends_with($path, '/health') => null,
-            default => null,
-        };
+        if (str_ends_with($path, '/auth/me') || str_ends_with($path, '/auth/logout') || str_ends_with($path, '/health')) {
+            return null;
+        }
+
+        if (str_starts_with($path, '/api_v1/kategori')) {
+            return match (strtoupper($method)) {
+                'POST' => 'kategori.create',
+                'PUT', 'PATCH' => 'kategori.update',
+                'DELETE' => 'kategori.delete',
+                default => 'kategori.view',
+            };
+        }
+
+        return null;
     }
 }

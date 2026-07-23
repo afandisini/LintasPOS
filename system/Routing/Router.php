@@ -42,6 +42,16 @@ class Router
         return $this->add('POST', $uri, $action);
     }
 
+    public function put(string $uri, mixed $action): Route
+    {
+        return $this->add('PUT', $uri, $action);
+    }
+
+    public function delete(string $uri, mixed $action): Route
+    {
+        return $this->add('DELETE', $uri, $action);
+    }
+
     /**
      * @param callable|array{0: class-string, 1: string} $action
      */

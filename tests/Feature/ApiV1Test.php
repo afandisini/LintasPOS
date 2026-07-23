@@ -107,6 +107,15 @@ final class ApiV1Test extends TestCase
         self::assertStringContainsString('UNAUTHENTICATED', $response->content());
     }
 
+    public function testKategoriCrudRequiresBearerToken(): void
+    {
+        $app = require dirname(__DIR__, 2) . '/bootstrap/app.php';
+        $response = $app->kernel()->handle(Request::create('GET', '/api_v1/kategori?page=1&per_page=20'));
+
+        self::assertSame(401, $response->statusCode());
+        self::assertStringContainsString('UNAUTHENTICATED', $response->content());
+    }
+
     private function resetDatabaseConnection(): void
     {
         $reflection = new \ReflectionClass(Database::class);
