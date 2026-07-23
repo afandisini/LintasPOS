@@ -155,6 +155,41 @@ paths:
       responses:
         '200': {description: Satuan dihapus}
         '404': {description: Satuan tidak ditemukan}
+  /barang:
+    get: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Daftar barang}}}
+    post: {tags: [Master Data], security: [{bearerAuth: []}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/BarangInput'}}}}, responses: {'201': {description: Barang dibuat}, '422': {description: Validasi gagal}}}
+  /barang/{id}:
+    get: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Detail barang}, '404': {description: Tidak ditemukan}}}
+    put: {tags: [Master Data], security: [{bearerAuth: []}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/BarangInput'}}}}, responses: {'200': {description: Barang diperbarui}}}
+    delete: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Barang dihapus}}}
+  /jasa:
+    get: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Daftar jasa}}}
+    post: {tags: [Master Data], security: [{bearerAuth: []}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/JasaInput'}}}}, responses: {'201': {description: Jasa dibuat}}}
+  /jasa/{id}:
+    get: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Detail jasa}}}
+    put: {tags: [Master Data], security: [{bearerAuth: []}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/JasaInput'}}}}, responses: {'200': {description: Jasa diperbarui}}}
+    delete: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Jasa dihapus}}}
+  /pelanggan:
+    get: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Daftar pelanggan}}}
+    post: {tags: [Master Data], security: [{bearerAuth: []}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PelangganInput'}}}}, responses: {'201': {description: Pelanggan dibuat}}}
+  /pelanggan/{id}:
+    get: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Detail pelanggan}}}
+    put: {tags: [Master Data], security: [{bearerAuth: []}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PelangganInput'}}}}, responses: {'200': {description: Pelanggan diperbarui}}}
+    delete: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Pelanggan dihapus}}}
+  /supplier:
+    get: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Daftar supplier}}}
+    post: {tags: [Master Data], security: [{bearerAuth: []}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupplierInput'}}}}, responses: {'201': {description: Supplier dibuat}}}
+  /supplier/{id}:
+    get: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Detail supplier}}}
+    put: {tags: [Master Data], security: [{bearerAuth: []}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SupplierInput'}}}}, responses: {'200': {description: Supplier diperbarui}}}
+    delete: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Supplier dihapus}}}
+  /diskon:
+    get: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Daftar diskon}}}
+    post: {tags: [Master Data], security: [{bearerAuth: []}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DiskonInput'}}}}, responses: {'201': {description: Diskon dibuat}}}
+  /diskon/{id}:
+    get: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Detail diskon}}}
+    put: {tags: [Master Data], security: [{bearerAuth: []}], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DiskonInput'}}}}, responses: {'200': {description: Diskon diperbarui}}}
+    delete: {tags: [Master Data], security: [{bearerAuth: []}], responses: {'200': {description: Diskon dihapus}}}
 components:
   securitySchemes:
     bearerAuth:
@@ -186,3 +221,23 @@ components:
       properties:
         nama: {type: string, maxLength: 255}
         ket: {type: string}
+    BarangInput:
+      type: object
+      required: [id_barang, kategori_id, nama_barang, merk, harga_beli, harga_jual]
+      properties: {id_barang: {type: string}, kategori_id: {type: integer}, satuan_id: {type: integer}, nama_barang: {type: string}, merk: {type: string}, harga_beli: {type: integer}, harga_jual: {type: integer}, exp_date: {type: string, format: date}}
+    JasaInput:
+      type: object
+      required: [id_jasa, kategori_id, nama, harga]
+      properties: {id_jasa: {type: string}, kategori_id: {type: integer}, satuan_id: {type: integer}, nama: {type: string}, harga: {type: integer}, tgl_input: {type: string, format: date}}
+    PelangganInput:
+      type: object
+      required: [nama_pelanggan]
+      properties: {kode_pelanggan: {type: string}, nama_pelanggan: {type: string}, alamat_pelanggan: {type: string}, telepon_pelanggan: {type: string}, email_pelanggan: {type: string, format: email}}
+    SupplierInput:
+      type: object
+      required: [nama_supplier]
+      properties: {nama_supplier: {type: string}, alamat_supplier: {type: string}, telepon_supplier: {type: string}, email_supplier: {type: string, format: email}}
+    DiskonInput:
+      type: object
+      required: [diskon]
+      properties: {barang_id: {type: string}, diskon: {type: integer}, tgl_start: {type: string, format: date}, tgl_end: {type: string, format: date}}

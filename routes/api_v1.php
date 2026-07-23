@@ -3,9 +3,14 @@
 declare(strict_types=1);
 
 use App\Controllers\Api\AuthController;
+use App\Controllers\Api\BarangController;
+use App\Controllers\Api\DiskonController;
 use App\Controllers\Api\HealthController;
+use App\Controllers\Api\JasaController;
 use App\Controllers\Api\KategoriController;
+use App\Controllers\Api\PelangganController;
 use App\Controllers\Api\SatuanController;
+use App\Controllers\Api\SupplierController;
 use App\Middleware\ApiAuthenticate;
 use App\Middleware\ApiPermission;
 use App\Middleware\ApiRateLimit;
@@ -28,3 +33,17 @@ $router->post('/api_v1/satuan', [SatuanController::class, 'store'])->withMiddlew
 $router->get('/api_v1/satuan/{id}', [SatuanController::class, 'show'])->withMiddleware($satuanMiddleware);
 $router->put('/api_v1/satuan/{id}', [SatuanController::class, 'update'])->withMiddleware($satuanMiddleware);
 $router->delete('/api_v1/satuan/{id}', [SatuanController::class, 'destroy'])->withMiddleware($satuanMiddleware);
+$masterMiddleware = [ApiRateLimit::class, ApiAuthenticate::class, ApiPermission::class];
+foreach ([
+    'barang' => BarangController::class,
+    'jasa' => JasaController::class,
+    'pelanggan' => PelangganController::class,
+    'supplier' => SupplierController::class,
+    'diskon' => DiskonController::class,
+] as $resource => $controller) {
+    $router->get('/api_v1/' . $resource, [$controller, 'index'])->withMiddleware($masterMiddleware);
+    $router->post('/api_v1/' . $resource, [$controller, 'store'])->withMiddleware($masterMiddleware);
+    $router->get('/api_v1/' . $resource . '/{id}', [$controller, 'show'])->withMiddleware($masterMiddleware);
+    $router->put('/api_v1/' . $resource . '/{id}', [$controller, 'update'])->withMiddleware($masterMiddleware);
+    $router->delete('/api_v1/' . $resource . '/{id}', [$controller, 'destroy'])->withMiddleware($masterMiddleware);
+}

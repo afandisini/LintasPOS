@@ -48,8 +48,9 @@ final class ApiPermission
             return null;
         }
 
-        if (str_starts_with($path, '/api_v1/kategori') || str_starts_with($path, '/api_v1/satuan')) {
-            $resource = str_starts_with($path, '/api_v1/satuan') ? 'satuan' : 'kategori';
+        $resources = ['kategori', 'satuan', 'barang', 'jasa', 'pelanggan', 'supplier', 'diskon'];
+        foreach ($resources as $resource) {
+            if (!str_starts_with($path, '/api_v1/' . $resource)) continue;
             return match (strtoupper($method)) {
                 'POST' => $resource . '.create',
                 'PUT', 'PATCH' => $resource . '.update',

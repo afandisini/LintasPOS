@@ -125,6 +125,19 @@ final class ApiV1Test extends TestCase
         self::assertStringContainsString('UNAUTHENTICATED', $response->content());
     }
 
+    /** @dataProvider masterDataPaths */
+    public function testAdditionalMasterDataRequiresBearerToken(string $path): void
+    {
+        $app = require dirname(__DIR__, 2) . '/bootstrap/app.php';
+        $response = $app->kernel()->handle(Request::create('GET', $path));
+        self::assertSame(401, $response->statusCode());
+    }
+
+    public static function masterDataPaths(): array
+    {
+        return [['/api_v1/barang'], ['/api_v1/jasa'], ['/api_v1/pelanggan'], ['/api_v1/supplier'], ['/api_v1/diskon']];
+    }
+
     private function resetDatabaseConnection(): void
     {
         $reflection = new \ReflectionClass(Database::class);
