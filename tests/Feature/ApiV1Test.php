@@ -64,7 +64,10 @@ final class ApiV1Test extends TestCase
 
         self::assertSame(200, $response->statusCode());
         self::assertSame('application/json', $response->headers()['Content-Type']);
+        self::assertArrayHasKey('X-Request-Id', $response->headers());
+        self::assertSame('1', $response->headers()['X-API-Version']);
         self::assertStringContainsString('"success":true', $response->content());
+        self::assertStringContainsString('"request_id"', $response->content());
     }
 
     public function testLoginMeAndLogoutUseHashedBearerToken(): void

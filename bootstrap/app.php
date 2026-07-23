@@ -68,5 +68,6 @@ if (!$skipRouteCache && is_file($routeCachePath)) {
 
 $app->loadRoutesFrom($app->basePath('routes/web.php'), 'web');
 $app->loadRoutesFrom($app->basePath('routes/api.php'), 'api');
+$app->loadRoutesFrom($app->basePath('routes/api_v1.php'), 'api_v1');
 
 return $app;

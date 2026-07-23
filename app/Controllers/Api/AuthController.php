@@ -24,12 +24,15 @@ final class AuthController
             return ApiResponse::error('INVALID_CREDENTIALS', (string) ($result['message'] ?? 'Kredensial tidak valid.'), 401);
         }
 
-        $issued = $tokens->issue((int) $result['user']['id'], (string) ($payload['device_name'] ?? 'api-client'));
+        $issued = $tokens->issue((int) $result['user']['id'], (string) ($payload['device_name'] ?? 'api-client'), $payload);
         return ApiResponse::success([
+            'access_token' => $issued['token'],
             'token' => $issued['token'],
             'token_type' => 'Bearer',
+            'expires_in' => 60 * 60 * 24 * 30,
             'expires_at' => $issued['expires_at'],
             'user' => $result['user'],
+            'permissions' => [],
         ]);
     }
 
