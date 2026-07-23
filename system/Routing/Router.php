@@ -52,6 +52,11 @@ class Router
         return $this->add('DELETE', $uri, $action);
     }
 
+    public function options(string $uri, mixed $action): Route
+    {
+        return $this->add('OPTIONS', $uri, $action);
+    }
+
     /**
      * @param callable|array{0: class-string, 1: string} $action
      */

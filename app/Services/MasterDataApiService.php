@@ -8,7 +8,7 @@ use PDO;
 
 final class MasterDataApiService
 {
-    public function paginate(string $table, array $fields, int $page, int $perPage, string $search, string $sort, string $direction): array
+    public function paginate(string $table, array $fields, int $page, int $perPage, string $search, string $sort, string $direction, array $filters = []): array
     {
         $pdo = Database::connection();
         $columns = array_values(array_unique(array_merge(['id'], $fields, ['created_at', 'updated_at'])));
@@ -18,8 +18,19 @@ final class MasterDataApiService
         $bindings = [];
         $searchFields = array_values(array_filter($fields, static fn(string $field): bool => !in_array($field, ['kategori_id', 'satuan_id', 'gambar', 'gambar_img', 'harga', 'harga_beli', 'harga_jual', 'stok', 'diskon'], true)));
         if ($search !== '' && $searchFields !== []) {
-            $where .= ' AND (' . implode(' OR ', array_map(static fn(string $field): string => '`' . $field . '` LIKE :search', $searchFields)) . ')';
-            $bindings['search'] = '%' . $search . '%';
+            $parts = [];
+            foreach ($searchFields as $index => $field) {
+                $param = 'search_' . $index;
+                $parts[] = '`' . $field . '` LIKE :' . $param;
+                $bindings[$param] = '%' . $search . '%';
+            }
+            $where .= ' AND (' . implode(' OR ', $parts) . ')';
+        }
+        foreach ($filters as $field => $value) {
+            if (!in_array($field, $fields, true) || $value === '' || $value === null) continue;
+            $param = 'filter_' . $field;
+            $where .= ' AND `' . $field . '` = :' . $param;
+            $bindings[$param] = $value;
         }
         $select = implode(', ', array_map(static fn(string $field): string => '`' . $field . '`', $columns));
         $count = $pdo->prepare('SELECT COUNT(*) FROM `' . $table . '`' . $where);

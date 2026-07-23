@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Controllers\Api\SatuanController;
 use App\Services\Database;
+use App\Services\SatuanApiService;
 use PDO;
 use PHPUnit\Framework\TestCase;
 use System\Http\Request;
@@ -136,6 +138,27 @@ final class ApiV1Test extends TestCase
     public static function masterDataPaths(): array
     {
         return [['/api_v1/barang'], ['/api_v1/jasa'], ['/api_v1/pelanggan'], ['/api_v1/supplier'], ['/api_v1/diskon']];
+    }
+
+    /** @dataProvider auxiliaryApiPaths */
+    public function testLookupAndMediaRequireBearerToken(string $path): void
+    {
+        $app = require dirname(__DIR__, 2) . '/bootstrap/app.php';
+        $response = $app->kernel()->handle(Request::create('GET', $path));
+        self::assertSame(401, $response->statusCode());
+    }
+
+    public function testSatuanValidationRejectsMissingName(): void
+    {
+        $response = (new SatuanController())->store(Request::create('POST', '/api_v1/satuan', ['nama' => '']), new SatuanApiService());
+
+        self::assertSame(422, $response->statusCode());
+        self::assertStringContainsString('nama', $response->content());
+    }
+
+    public static function auxiliaryApiPaths(): array
+    {
+        return [['/api_v1/lookups/barang'], ['/api_v1/lookups/jasa'], ['/api_v1/lookups/pelanggan'], ['/api_v1/lookups/supplier'], ['/api_v1/media/1']];
     }
 
     private function resetDatabaseConnection(): void

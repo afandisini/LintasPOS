@@ -18,8 +18,9 @@ final class KategoriApiService
         $where = ' WHERE deleted_at IS NULL';
         $bindings = [];
         if ($search !== '') {
-            $where .= ' AND (nama LIKE :search OR ket LIKE :search)';
-            $bindings['search'] = '%' . $search . '%';
+            $where .= ' AND (nama LIKE :search_name OR ket LIKE :search_ket)';
+            $bindings['search_name'] = '%' . $search . '%';
+            $bindings['search_ket'] = '%' . $search . '%';
         }
 
         $count = $pdo->prepare('SELECT COUNT(*) FROM kategori' . $where);

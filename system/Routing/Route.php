@@ -98,7 +98,13 @@ class Route
 
     private function compilePattern(): ?string
     {
-        $pattern = preg_replace('#\{([^/]+)\}#', '(?P<$1>[^/]+)', $this->uri);
+        $pattern = preg_replace_callback(
+            '#\{([^/]+)\}#',
+            static fn (array $match): string => str_ends_with($match[1], '...')
+                ? '(?P<' . substr($match[1], 0, -3) . '>.+)'
+                : '(?P<' . $match[1] . '>[^/]+)',
+            $this->uri
+        );
         if (!is_string($pattern)) {
             return null;
         }

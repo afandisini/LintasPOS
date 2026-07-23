@@ -58,6 +58,17 @@ final class ApiPermission
                 default => $resource . '.view',
             };
         }
+        if (str_starts_with($path, '/api_v1/lookups/')) {
+            $resource = trim(substr($path, strlen('/api_v1/lookups/')), '/');
+            return in_array($resource, ['barang', 'jasa', 'pelanggan', 'supplier'], true) ? $resource . '.view' : null;
+        }
+        if (str_starts_with($path, '/api_v1/media')) {
+            return match (strtoupper($method)) {
+                'POST' => 'media.create',
+                'DELETE' => 'media.delete',
+                default => 'media.view',
+            };
+        }
 
         return null;
     }

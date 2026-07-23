@@ -21,7 +21,11 @@ abstract class MasterDataController
             $query = $request->all();
             $page = max(1, (int) ($query['page'] ?? 1));
             $perPage = min(100, max(1, (int) ($query['per_page'] ?? 20)));
-            $result = $service->paginate($definition['table'], $definition['fields'], $page, $perPage, trim((string) ($query['search'] ?? '')), trim((string) ($query['sort'] ?? 'id')), trim((string) ($query['direction'] ?? 'desc')));
+            $filters = is_array($query['filter'] ?? null) ? $query['filter'] : [];
+            foreach (($definition['filters'] ?? []) as $filter) {
+                if (array_key_exists($filter, $query)) $filters[$filter] = $query[$filter];
+            }
+            $result = $service->paginate($definition['table'], $definition['fields'], $page, $perPage, trim((string) ($query['search'] ?? '')), trim((string) ($query['sort'] ?? 'id')), trim((string) ($query['direction'] ?? 'desc')), $filters);
             $total = (int) $result['total'];
             return ApiResponse::success($result['rows'], 200, ['pagination' => ['page' => $page, 'per_page' => $perPage, 'total' => $total, 'last_page' => max(1, (int) ceil($total / $perPage))]]);
         } catch (Throwable) {

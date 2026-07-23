@@ -35,6 +35,7 @@ $app->setMiddlewareGroup('web', [
     App\Middleware\AuditMiddleware::class,
 ]);
 $app->setMiddlewareGroup('api', [
+    App\Middleware\ApiCors::class,
     App\Middleware\RequestActivityMiddleware::class,
     App\Middleware\BlockCheckerMiddleware::class,
     App\Middleware\RateLimitMiddleware::class,
