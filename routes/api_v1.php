@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\Api\AuthController;
 use App\Controllers\Api\HealthController;
 use App\Controllers\Api\KategoriController;
+use App\Controllers\Api\SatuanController;
 use App\Middleware\ApiAuthenticate;
 use App\Middleware\ApiPermission;
 use App\Middleware\ApiRateLimit;
@@ -21,3 +22,9 @@ $router->post('/api_v1/kategori', [KategoriController::class, 'store'])->withMid
 $router->get('/api_v1/kategori/{id}', [KategoriController::class, 'show'])->withMiddleware($kategoriMiddleware);
 $router->put('/api_v1/kategori/{id}', [KategoriController::class, 'update'])->withMiddleware($kategoriMiddleware);
 $router->delete('/api_v1/kategori/{id}', [KategoriController::class, 'destroy'])->withMiddleware($kategoriMiddleware);
+$satuanMiddleware = [ApiRateLimit::class, ApiAuthenticate::class, ApiPermission::class];
+$router->get('/api_v1/satuan', [SatuanController::class, 'index'])->withMiddleware($satuanMiddleware);
+$router->post('/api_v1/satuan', [SatuanController::class, 'store'])->withMiddleware($satuanMiddleware);
+$router->get('/api_v1/satuan/{id}', [SatuanController::class, 'show'])->withMiddleware($satuanMiddleware);
+$router->put('/api_v1/satuan/{id}', [SatuanController::class, 'update'])->withMiddleware($satuanMiddleware);
+$router->delete('/api_v1/satuan/{id}', [SatuanController::class, 'destroy'])->withMiddleware($satuanMiddleware);

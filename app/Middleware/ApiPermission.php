@@ -48,12 +48,13 @@ final class ApiPermission
             return null;
         }
 
-        if (str_starts_with($path, '/api_v1/kategori')) {
+        if (str_starts_with($path, '/api_v1/kategori') || str_starts_with($path, '/api_v1/satuan')) {
+            $resource = str_starts_with($path, '/api_v1/satuan') ? 'satuan' : 'kategori';
             return match (strtoupper($method)) {
-                'POST' => 'kategori.create',
-                'PUT', 'PATCH' => 'kategori.update',
-                'DELETE' => 'kategori.delete',
-                default => 'kategori.view',
+                'POST' => $resource . '.create',
+                'PUT', 'PATCH' => $resource . '.update',
+                'DELETE' => $resource . '.delete',
+                default => $resource . '.view',
             };
         }
 

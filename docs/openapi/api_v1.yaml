@@ -105,6 +105,56 @@ paths:
       responses:
         '200': {description: Kategori dihapus}
         '404': {description: Kategori tidak ditemukan}
+  /satuan:
+    get:
+      tags: [Master Data]
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: per_page, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: search, in: query, schema: {type: string}}
+        - {name: sort, in: query, schema: {type: string, enum: [id, nama, created_at, updated_at]}}
+        - {name: direction, in: query, schema: {type: string, enum: [asc, desc]}}
+      responses:
+        '200': {description: Daftar satuan}
+        '401': {description: Token tidak valid}
+    post:
+      tags: [Master Data]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SatuanInput'}
+      responses:
+        '201': {description: Satuan dibuat}
+        '422': {description: Validasi gagal}
+  /satuan/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer}}
+    get:
+      tags: [Master Data]
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {description: Detail satuan}
+        '404': {description: Satuan tidak ditemukan}
+    put:
+      tags: [Master Data]
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SatuanInput'}
+      responses:
+        '200': {description: Satuan diperbarui}
+        '422': {description: Validasi gagal}
+    delete:
+      tags: [Master Data]
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {description: Satuan dihapus}
+        '404': {description: Satuan tidak ditemukan}
 components:
   securitySchemes:
     bearerAuth:
@@ -130,3 +180,9 @@ components:
         nama: {type: string, maxLength: 255}
         ket: {type: string}
         tgl_input: {type: string, format: date}
+    SatuanInput:
+      type: object
+      required: [nama]
+      properties:
+        nama: {type: string, maxLength: 255}
+        ket: {type: string}
