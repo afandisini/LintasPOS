@@ -1,11 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/login', name: 'login', component: () => import('@/pages/auth/LoginPage.vue'), meta: { guest: true } },
-    { path: '/', name: 'dashboard', component: () => import('@/pages/DashboardPage.vue'), meta: { auth: true } },
+    { path: '/login', name: 'login', component: () => import('../pages/auth/LoginPage.vue'), meta: { guest: true } },
+    { path: '/', name: 'dashboard', component: () => import('../pages/DashboardPage.vue'), meta: { auth: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

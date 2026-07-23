@@ -3,14 +3,14 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Capacitor } from '@capacitor/core'
 import { Device } from '@capacitor/device'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '../../stores/auth'
 
 const auth = useAuthStore(); const router = useRouter(); const identity = ref(''); const password = ref(''); const error = ref('')
 async function submit() {
   error.value = ''
   try {
     const device = await Device.getId()
-    await auth.signIn({ identity: identity.value, password: password.value, device_name: device.identifier, device_uuid: device.identifier, platform: Capacitor.getPlatform(), app_version: '0.1.0' })
+    await auth.signIn({ identity: identity.value, password: password.value, device_name: device.identifier, device_uuid: device.identifier, platform: Capacitor.getPlatform(), app_version: '1.0.0' })
     await router.push('/')
   } catch (exception) { error.value = exception instanceof Error ? exception.message : 'Login gagal.' }
 }

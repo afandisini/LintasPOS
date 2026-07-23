@@ -11,6 +11,7 @@ database/*
 !database/drop/*.sql
 adminDev/*
 .ddev/*
+mobile/*
 mobile/node_modules/
 mobile/dist/
 mobile/android/.gradle/

@@ -43,6 +43,15 @@ $app->setMiddlewareGroup('api', [
     App\Middleware\StartSession::class,
     App\Middleware\AuditMiddleware::class,
 ]);
+$app->setMiddlewareGroup('api_v1', [
+    App\Middleware\ApiCors::class,
+    App\Middleware\RequestActivityMiddleware::class,
+    App\Middleware\BlockCheckerMiddleware::class,
+    App\Middleware\RateLimitMiddleware::class,
+    App\Middleware\RequestInspectionMiddleware::class,
+    App\Middleware\StartSession::class,
+    App\Middleware\AuditMiddleware::class,
+]);
 
 $storagePath = (string) $config->get('paths.storage', 'storage');
 $isAbsolutePath = static function (string $path): bool {

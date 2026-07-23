@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { currentUser, login, logout } from '@/api/auth'
-import { secureToken } from '@/services/secureStorage'
-import type { User } from '@/types/api'
+import { currentUser, login, logout } from '../api/auth'
+import { secureToken } from '../services/secureStorage'
+import type { User } from '../types/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({ user: null as User | null, permissions: [] as string[], ready: false, busy: false }),
