@@ -6,6 +6,8 @@ namespace System\Http;
 
 class Request
 {
+    /** @var array<string, mixed> */
+    private array $attributes = [];
     /**
      * @param array<string, mixed> $query
      * @param array<string, mixed> $request
@@ -98,5 +100,15 @@ class Request
     {
         $https = $this->server['HTTPS'] ?? null;
         return $https === 'on' || $https === '1';
+    }
+
+    public function setAttribute(string $key, mixed $value): void
+    {
+        $this->attributes[$key] = $value;
+    }
+
+    public function attribute(string $key, mixed $default = null): mixed
+    {
+        return $this->attributes[$key] ?? $default;
     }
 }

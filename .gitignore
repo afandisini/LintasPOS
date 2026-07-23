@@ -4,7 +4,13 @@
 .well-known/
 design_template/*
 database/*
+!database/
+!database/update/
+!database/drop/
+!database/update/*.sql
+!database/drop/*.sql
 adminDev/*
+.ddev/*
 
 # File tertentu
 AGENT.md
