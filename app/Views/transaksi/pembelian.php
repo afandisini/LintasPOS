@@ -44,7 +44,7 @@ $extraHead = raw('<link href="' . e(base_url('assets/vendor/datatables/dataTable
 <?= raw(view('partials/dashboard/head', ['title' => $title ?? 'Pembelian', 'extraHead' => $extraHead])) ?>
 <?= raw(view('partials/dashboard/shell_open', ['auth' => $auth, 'activeMenu' => $activeMenu ?? 'transaksi-pembelian'])) ?>
 
-<main class="main" id="mainContent">
+<main class="main pos-transaksi-page" id="mainContent">
 
     <div class="pg-header mb-3 anim">
         <h1><?= e($title ?? 'Pembelian') ?></h1>

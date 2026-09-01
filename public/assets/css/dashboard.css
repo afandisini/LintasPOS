@@ -3277,6 +3277,35 @@ select.fi {
   box-shadow: 0 8px 20px rgba(245, 123, 0, 0.28);
 }
 
+@media (max-width: 575.98px) {
+  .pos-transaksi-page .keu-tab-wrap {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .pos-transaksi-page .keu-tab-wrap::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  .pos-transaksi-page .keu-tab-link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
 .mg-order-list {
   list-style: none;
   margin: 0;

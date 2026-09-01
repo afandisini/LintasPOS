@@ -56,7 +56,7 @@ if ($toInt($activeHoldId ?? 0) > 0) {
 <?= raw(view('partials/dashboard/head', ['title' => $title ?? 'Penjualan'])) ?>
 <?= raw(view('partials/dashboard/shell_open', ['auth' => $auth, 'activeMenu' => $activeMenu ?? 'transaksi-penjualan'])) ?>
 
-<main class="main" id="mainContent">
+<main class="main pos-transaksi-page" id="mainContent">
 
     <div class="pg-header mb-3 anim">
         <h1><?= e($title ?? 'Penjualan') ?></h1>
